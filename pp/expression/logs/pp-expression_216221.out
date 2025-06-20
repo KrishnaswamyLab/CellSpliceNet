@@ -1,0 +1,83 @@
+  0%|          | 0/50 [00:00<?, ?it/s]Processing group: OLL
+> /gpfs/radev/project/lafferty/aa2793/cellnn/cellsplice.net/pp/expression/pp03_build_graph_celltype.py(29)build_mi_graph()
+-> return neuron_i_mi_matrix
+(Pdb)   0%|          | 0/50 [07:24<?, ?it/s]
+multiprocessing.pool.RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "pp03_build_graph_celltype.py", line 42, in process_neuron
+    mi_matrix = build_mi_graph(neuron_i_df)
+  File "pp03_build_graph_celltype.py", line 29, in build_mi_graph
+    return neuron_i_mi_matrix
+  File "pp03_build_graph_celltype.py", line 29, in build_mi_graph
+    return neuron_i_mi_matrix
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "pp03_build_graph_celltype.py", line 50, in <module>
+    for _ in tqdm(pool.imap_unordered(process_neuron, neuron_sets), total=len(neuron_sets)):
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/multiprocessing/pool.py", line 868, in next
+    raise value
+bdb.BdbQuit
+Processing mi_neuron_names_list:   0%|          | 0/50 [00:00<?, ?it/s]Processing mi_neuron_names_list:   2%|▏         | 1/50 [00:00<00:11,  4.25it/s]Processing mi_neuron_names_list:   4%|▍         | 2/50 [00:00<00:14,  3.26it/s]Processing mi_neuron_names_list:   6%|▌         | 3/50 [00:00<00:13,  3.61it/s]Processing mi_neuron_names_list:   8%|▊         | 4/50 [00:01<00:11,  4.00it/s]Processing mi_neuron_names_list:  10%|█         | 5/50 [00:01<00:10,  4.12it/s]Processing mi_neuron_names_list:  12%|█▏        | 6/50 [00:01<00:09,  4.52it/s]Processing mi_neuron_names_list:  14%|█▍        | 7/50 [00:01<00:09,  4.72it/s]Processing mi_neuron_names_list:  16%|█▌        | 8/50 [00:01<00:08,  4.89it/s]Processing mi_neuron_names_list:  18%|█▊        | 9/50 [00:02<00:08,  5.08it/s]Processing mi_neuron_names_list:  20%|██        | 10/50 [00:02<00:07,  5.05it/s]Processing mi_neuron_names_list:  22%|██▏       | 11/50 [00:02<00:07,  5.13it/s]Processing mi_neuron_names_list:  24%|██▍       | 12/50 [00:02<00:07,  5.17it/s]Processing mi_neuron_names_list:  26%|██▌       | 13/50 [00:02<00:07,  5.24it/s]Processing mi_neuron_names_list:  28%|██▊       | 14/50 [00:03<00:07,  4.84it/s]Processing mi_neuron_names_list:  30%|███       | 15/50 [00:03<00:06,  5.00it/s]Processing mi_neuron_names_list:  32%|███▏      | 16/50 [00:03<00:06,  5.16it/s]Processing mi_neuron_names_list:  34%|███▍      | 17/50 [00:03<00:06,  5.23it/s]Processing mi_neuron_names_list:  36%|███▌      | 18/50 [00:03<00:06,  5.31it/s]Processing mi_neuron_names_list:  38%|███▊      | 19/50 [00:03<00:05,  5.42it/s]Processing mi_neuron_names_list:  40%|████      | 20/50 [00:04<00:05,  5.49it/s]Processing mi_neuron_names_list:  42%|████▏     | 21/50 [00:04<00:05,  5.42it/s]Processing mi_neuron_names_list:  44%|████▍     | 22/50 [00:04<00:04,  5.70it/s]Processing mi_neuron_names_list:  46%|████▌     | 23/50 [00:04<00:04,  5.65it/s]Processing mi_neuron_names_list:  48%|████▊     | 24/50 [00:04<00:04,  5.61it/s]Processing mi_neuron_names_list:  50%|█████     | 25/50 [00:04<00:04,  5.67it/s]Processing mi_neuron_names_list:  52%|█████▏    | 26/50 [00:05<00:04,  5.68it/s]Processing mi_neuron_names_list:  54%|█████▍    | 27/50 [00:05<00:04,  5.62it/s]Processing mi_neuron_names_list:  56%|█████▌    | 28/50 [00:05<00:03,  5.62it/s]Processing mi_neuron_names_list:  58%|█████▊    | 29/50 [00:05<00:03,  5.80it/s]Processing mi_neuron_names_list:  60%|██████    | 30/50 [00:05<00:03,  5.98it/s]Processing mi_neuron_names_list:  62%|██████▏   | 31/50 [00:06<00:03,  5.82it/s]Processing mi_neuron_names_list:  64%|██████▍   | 32/50 [00:06<00:03,  5.68it/s]Processing mi_neuron_names_list:  66%|██████▌   | 33/50 [00:06<00:02,  5.99it/s]Processing mi_neuron_names_list:  68%|██████▊   | 34/50 [00:06<00:02,  6.00it/s]Processing mi_neuron_names_list:  70%|███████   | 35/50 [00:06<00:02,  5.90it/s]Processing mi_neuron_names_list:  72%|███████▏  | 36/50 [00:06<00:02,  5.72it/s]Processing mi_neuron_names_list:  74%|███████▍  | 37/50 [00:07<00:02,  5.77it/s]Processing mi_neuron_names_list:  76%|███████▌  | 38/50 [00:07<00:02,  5.63it/s]Processing mi_neuron_names_list:  78%|███████▊  | 39/50 [00:07<00:01,  5.67it/s]Processing mi_neuron_names_list:  80%|████████  | 40/50 [00:07<00:01,  5.62it/s]Processing mi_neuron_names_list:  82%|████████▏ | 41/50 [00:07<00:01,  5.56it/s]Processing mi_neuron_names_list:  84%|████████▍ | 42/50 [00:07<00:01,  5.55it/s]Processing mi_neuron_names_list:  86%|████████▌ | 43/50 [00:08<00:01,  5.53it/s]Processing mi_neuron_names_list:  88%|████████▊ | 44/50 [00:08<00:01,  5.31it/s]Processing mi_neuron_names_list:  90%|█████████ | 45/50 [00:08<00:00,  5.44it/s]Processing mi_neuron_names_list:  92%|█████████▏| 46/50 [00:08<00:00,  5.64it/s]Processing mi_neuron_names_list:  94%|█████████▍| 47/50 [00:08<00:00,  5.63it/s]Processing mi_neuron_names_list:  96%|█████████▌| 48/50 [00:09<00:00,  5.45it/s]Processing mi_neuron_names_list:  98%|█████████▊| 49/50 [00:09<00:00,  5.49it/s]Processing mi_neuron_names_list: 100%|██████████| 50/50 [00:09<00:00,  5.57it/s]Processing mi_neuron_names_list: 100%|██████████| 50/50 [00:09<00:00,  5.32it/s]
+Processed mi_matrix_OLL.csv
+Processed mi_matrix_RIM.csv
+Processed mi_matrix_RIC.csv
+Processed mi_matrix_AWB.csv
+Processed mi_matrix_SIA.csv
+Processed mi_matrix_SMD.csv
+Processed mi_matrix_PVP.csv
+Processed mi_matrix_CEP.csv
+Processed mi_matrix_RME.csv
+Processed mi_matrix_AVK.csv
+Processed mi_matrix_PVQ.csv
+Processed mi_matrix_AIM.csv
+Processed mi_matrix_HSN.csv
+Processed mi_matrix_PVC.csv
+Processed mi_matrix_PHA.csv
+Processed mi_matrix_I5.csv
+Processed mi_matrix_PVM.csv
+Processed mi_matrix_AFD.csv
+Processed mi_matrix_SMB.csv
+Processed mi_matrix_DA.csv
+Processed mi_matrix_RIA.csv
+Processed mi_matrix_ASI.csv
+Processed mi_matrix_VB.csv
+Processed mi_matrix_DVC.csv
+Processed mi_matrix_RMD.csv
+Processed mi_matrix_AIY.csv
+Processed mi_matrix_PVD.csv
+Processed mi_matrix_AVM.csv
+Processed mi_matrix_DVB.csv
+Processed mi_matrix_ADL.csv
+Processed mi_matrix_ASER.csv
+Processed mi_matrix_AVG.csv
+Processed mi_matrix_NSM.csv
+Processed mi_matrix_RIS.csv
+Processed mi_matrix_BAG.csv
+Processed mi_matrix_OLQ.csv
+Processed mi_matrix_IL2.csv
+Processed mi_matrix_AVE.csv
+Processed mi_matrix_ASEL.csv
+Processed mi_matrix_AVL.csv
+Processed mi_matrix_VC.csv
+Processed mi_matrix_AVA.csv
+Processed mi_matrix_AWA.csv
+Processed mi_matrix_LUA.csv
+Processed mi_matrix_AIN.csv
+Processed mi_matrix_AVH.csv
+Processed mi_matrix_IL1.csv
+Processed mi_matrix_ASK.csv
+Processed mi_matrix_CAN.csv
+Processed mi_matrix_ASG.csv

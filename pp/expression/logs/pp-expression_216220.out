@@ -1,0 +1,55 @@
+   i) loading mtx file and rows and col names file
+   ii) applying magic on the data
+   iii) filtering the sf
+i) loading the output of the magic file
+ii) extracting the neuron set-based df_magic
+iii) applying moments on each neurons
+iv) saving neuron-based moments
+  0%|          | 0/50 [00:00<?, ?it/s]Processing group: OLL
+> /gpfs/radev/project/lafferty/aa2793/cellnn/cellsplice.net/pp/expression/pp03_build_graph_celltype.py(29)build_mi_graph()
+-> return neuron_i_mi_matrix
+(Pdb)   0%|          | 0/50 [07:41<?, ?it/s]
+multiprocessing.pool.RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "pp03_build_graph_celltype.py", line 42, in process_neuron
+    mi_matrix = build_mi_graph(neuron_i_df)
+  File "pp03_build_graph_celltype.py", line 29, in build_mi_graph
+    return neuron_i_mi_matrix
+  File "pp03_build_graph_celltype.py", line 29, in build_mi_graph
+    return neuron_i_mi_matrix
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "pp03_build_graph_celltype.py", line 50, in <module>
+    for _ in tqdm(pool.imap_unordered(process_neuron, neuron_sets), total=len(neuron_sets)):
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/multiprocessing/pool.py", line 868, in next
+    raise value
+bdb.BdbQuit
+Processing mi_neuron_names_list:   0%|          | 0/50 [00:00<?, ?it/s]> /gpfs/radev/project/lafferty/aa2793/cellnn/cellsplice.net/pp/expression/pp04_get_scattering_coeffs.py(81)main()
+-> if os.path.isfile(moments_file_path):
+(Pdb) Processing mi_neuron_names_list:   0%|          | 0/50 [00:00<?, ?it/s]
+
+Traceback (most recent call last):
+  File "pp04_get_scattering_coeffs.py", line 102, in <module>
+    main()
+  File "pp04_get_scattering_coeffs.py", line 81, in main
+    if os.path.isfile(moments_file_path):
+  File "pp04_get_scattering_coeffs.py", line 81, in main
+    if os.path.isfile(moments_file_path):
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/gpfs/radev/home/aa2793/.conda/envs/pytorch_brain_pp/lib/python3.8/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit

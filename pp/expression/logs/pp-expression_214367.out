@@ -1,0 +1,7 @@
+Processing Neurons:   0%|          | 0/50 [00:00<?, ?it/s]Processing Neurons:   0%|          | 0/50 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "pp04_get_scattering_coeffs.py", line 143, in <module>
+    main()
+  File "pp04_get_scattering_coeffs.py", line 122, in main
+    label = file.split('_')[-1].split('.')[0]
+NameError: name 'file' is not defined

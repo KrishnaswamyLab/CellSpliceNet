@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --job-name=pp-expression 
+#SBATCH -p gpu --gpus=0           # Specify GPU type or use --gres=gpu:1 for any GPU #SBATCH --gres=gpu:a100 
+#SBATCH -c 12                     # Number of CPU cores
+#SBATCH --mem=200G                # Memory request (adjust as needed)
+#SBATCH --time=48:00:00           # Maximum runtime (reduce if necessary)
+#SBATCH --output=./logs/%x_%j.out  # Ensure the directory exists
+ 
+source ~/.bashrc
+
+module load miniconda
+conda activate pytorch_brain_pp
+ 
+# python pp01_impute_magic.py
+# python pp02_compute_moments.py
+# python pp03_build_graph_celltype.py
+python pp04_get_scattering_coeffs.py
