@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --job-name=cellsplicnet 
+#SBATCH -p gpu --gpus=1           # Specify GPU type or use --gres=gpu:1 for any GPU #SBATCH --gres=gpu:a100 
+#SBATCH -c 12                     # Number of CPU cores
+#SBATCH --mem=200G                # Memory request (adjust as needed)
+#SBATCH --time=48:00:00           # Maximum runtime (reduce if necessary)
+#SBATCH --output=../../outputs/tr-logs/%x_%j.out  # Ensure the directory exists
+
+# If your shell init is in ~/.bashrc, explicitly source it:
+source ~/.bashrc
+
+module load miniconda
+conda activate pytorch_cell
+
+python main.py # --replicate_status single --batch_size 16 #--train_continue True --model_key '20250313-112657'
+
+ 
