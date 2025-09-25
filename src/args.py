@@ -67,10 +67,7 @@ def print_gpu_info(args):
     
 def argparser_fn(dataset_type, batch_size=40, server='misha'):  
     parser = ArgumentParser(add_help=True) 
-    if server == 'mccleary':
-        dataset_root = '/home/aa2793/project/genenn/dataset/'
-    elif server == 'misha': 
-        dataset_root = '/gpfs/radev/home/aa2793/project/cellnn/dataset/'
+    dataset_root = 'DATASET PATH' 
 
     # data argmuments
     parser.add_argument("--model", default="deltacellsplicenet", type=str) 
