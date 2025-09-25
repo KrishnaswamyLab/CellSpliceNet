@@ -46,10 +46,10 @@ dataset_root = "/path/to/your/dataset"
 ---
 
 ## Training and validation
-Basic example:
 ```bash
 python scr/train.py    
 ```
+Our pretrained model is available at: [pretrained](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)
 ---
 
 ## Citing
