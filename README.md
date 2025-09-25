@@ -49,8 +49,8 @@ dataset_root = "/path/to/your/dataset"
 ```bash
 python scr/train.py    
 ```
-Our pretrained model is available at: [pretrained](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)
 ---
+Our pretrained model is available at: [pretrained model](https://drive.google.com/drive/folders/1pVfKlGspW1sOB1W-rr9SQD_qas4u8uhy?usp=sharing)
 
 ## Citing
 If you use this code or models, please cite:
