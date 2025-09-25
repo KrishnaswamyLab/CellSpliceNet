@@ -17,8 +17,8 @@ CellSpliceNet/
     nn/             # modules 
     train.py/       # train/eval loops 
     utils/          # logging, seeding, misc utils
-    viz/            # visulaziation tools for ploting the results
-  pp/               # preprocessing/postprocessing assets (running is optional as the preprocessing data offered)
+    viz/            # visulaziation tools for ploting
+  pp/               # preprocessing/postprocessing assets (running is optional as the preprocessing data have been offered)
   requirements.txt | environment.yml
   LICENSE 
   README.md
@@ -31,7 +31,7 @@ CellSpliceNet/
 - PyTorch: 1.10.2
 
 ###  Dependencies:
-All dependencies are avialable at [environment.yml] (https://github.com/KrishnaswamyLab/CellSpliceNet/blob/main/requirements.txt)
+All dependencies are available in [environment.yml] (https://github.com/KrishnaswamyLab/CellSpliceNet/blob/main/requirements.txt)
  
 ---
 
