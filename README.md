@@ -4,9 +4,9 @@ Alternative splicing profoundly diversifies the transcriptome and proteome, but 
 
 **Authors:** Arman Afrasiyabi, Jake Kovalic, Chen Liu, Egbert Castro, Alexis Weinreb, Erdem Varol, David M. Miller III,  Marc Hammarlund,  Smita Krishnaswamy 
 
-[**Preprint (bioRxiv)**](https://www.biorxiv.org/content/10.1101/2025.06.22.660966v1) 
-[**Repository**](https://github.com/KrishnaswamyLab/CellSpliceNet) 
-[Dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)
+[**Preprint (bioRxiv)**](https://www.biorxiv.org/content/10.1101/2025.06.22.660966v1) // 
+[**Repository**](https://github.com/KrishnaswamyLab/CellSpliceNet)  // 
+[**Dataset**](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)
 
 ## Repository structure
 ```
