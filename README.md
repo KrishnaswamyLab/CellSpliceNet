@@ -171,7 +171,7 @@ Contributions are welcome! Please open an issue to discuss major changes. For pu
 
 ## License
 
-This project is distributed under the terms specified in the **[LICENSE](./LICENSE)** file.
+This project is distributed under the terms specified in the **[LICENSE](https://github.com/KrishnaswamyLab/CellSpliceNet/blob/main/LICENSE.md)** file.
 
 ---
 
