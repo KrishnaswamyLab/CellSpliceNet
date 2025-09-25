@@ -141,7 +141,7 @@ python src/train.py
 
 ## Pretrained Weights
 
-A pretrained model is available here: **[CellSpliceNet-dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)**.  
+A pretrained model is available here: **[CellSpliceNet.pth](https://drive.google.com/drive/folders/1pVfKlGspW1sOB1W-rr9SQD_qas4u8uhy?usp=drive_link)**.  
 Download the weights and point your configuration/checkpoint loader to the file path per your setup.
 
 ---
