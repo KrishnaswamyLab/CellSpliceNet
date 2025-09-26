@@ -73,7 +73,7 @@ CellSpliceNet/
 - **Python:** 3.9.18  
 - **CUDA:** 11.3.1 (for GPU training)  
 - **PyTorch:** 1.10.2  
-- **Dependencies:** see `requirements.txt` *(or `environment.yml` if provided)*
+- **Dependencies:** see `requirements.txt` 
 
 ---
 
