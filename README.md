@@ -10,8 +10,8 @@
 
 **Authors:** Arman Afrasiyabi, Jake Kovalic, Chen Liu, Egbert Castro, Alexis Weinreb, Erdem Varol, David M. Miller III, Marc Hammarlund, Smita Krishnaswamy
 
-**Quick links:**  
-📄 [Preprint (bioRxiv)](https://www.biorxiv.org/content/10.1101/2025.06.22.660966v1) · 🧪 [Dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset) · 💻 [Repo](https://github.com/KrishnaswamyLab/CellSpliceNet) 
+**Quick links:**
+📄 [Preprint (bioRxiv)](https://www.biorxiv.org/content/10.1101/2025.06.22.660966v1) · 🧪 [Dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset) · 💻 [Repo](https://github.com/KrishnaswamyLab/CellSpliceNet)
 
 ---
 
@@ -27,23 +27,23 @@ We introduce CellSpliceNet, an interpretable transformer-based multimodal deep l
 
 ## Highlights
 
-- **Multimodal fusion:** sequence (global + ROI), secondary structure, and gene expression.  
-- **Interpretable attention:** modality-specific pooling surfaces biologically relevant signals (e.g., splice boundaries, loop accessibility).  
-- **Selective cross-modal attention:** preserves modality integrity while enabling targeted information flow.   
+- **Multimodal fusion:** sequence (global + ROI), secondary structure, and gene expression.
+- **Interpretable attention:** modality-specific pooling surfaces biologically relevant signals (e.g., splice boundaries, loop accessibility).
+- **Selective cross-modal attention:** preserves modality integrity while enabling targeted information flow.
 
 ---
 
 ## Table of Contents
 
-- [Repository Structure](#repository-structure)  
-- [Requirements](#requirements)  
-- [Installation](#installation)  
-- [Data: Download & Configure](#data-download--configure)  
-- [Quickstart: Train & Validate](#quickstart-train--validate)  
-- [Pretrained Weights](#pretrained-weights)  
-- [Troubleshooting](#troubleshooting)  
-- [Contributing](#contributing)  
-- [License](#license)  
+- [Repository Structure](#repository-structure)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Data: Download & Configure](#data-download--configure)
+- [Quickstart: Train & Validate](#quickstart-train--validate)
+- [Pretrained Weights](#pretrained-weights)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 - [Citation](#citation)
 
 ---
@@ -69,11 +69,11 @@ CellSpliceNet/
 
 ## Requirements
 
-- **OS:** Enterprise Linux 8.10 (other modern Linux distros likely fine)  
-- **Python:** 3.9.18  
-- **CUDA:** 11.3.1 (for GPU training)  
-- **PyTorch:** 1.10.2  
-- **Dependencies:** see `requirements.txt` 
+- **OS:** Enterprise Linux 8.10 (other modern Linux distros likely fine)
+- **Python:** 3.9.18
+- **CUDA:** 11.3.1 (for GPU training)
+- **PyTorch:** 1.10.2
+- **Dependencies:** see `requirements.txt`
 
 ---
 
@@ -103,6 +103,12 @@ pip install -r requirements.txt
 # Install PyTorch matching your CUDA (example for CUDA 11.3):
 # (Adjust to your platform if needed)
 pip install torch==1.10.2 torchvision==0.11.3 torchaudio==0.10.2
+
+# SpliceAI
+python -m pip install spliceai-pytorch
+
+# SpliceBERT
+python -m pip install transformers
 ```
 
 **Virtualenv**
@@ -118,7 +124,7 @@ pip install -r requirements.txt
 
 ## Data: Download & Configure
 
-1. Download the dataset: **[CellSpliceNet-dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)**  
+1. Download the dataset: **[CellSpliceNet-dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)**
 2. Set the dataset root in `src/args.py`:
    ```python
    dataset_root = "/path/to/your/dataset"
@@ -141,26 +147,26 @@ python src/train.py
 
 ## Pretrained Weights
 
-A pretrained model is available here: **[CellSpliceNet.pth](https://drive.google.com/drive/folders/1pVfKlGspW1sOB1W-rr9SQD_qas4u8uhy?usp=drive_link)**.  
+A pretrained model is available here: **[CellSpliceNet.pth](https://drive.google.com/drive/folders/1pVfKlGspW1sOB1W-rr9SQD_qas4u8uhy?usp=drive_link)**.
 Download the weights and point your configuration/checkpoint loader to the file path per your setup.
 
 ---
 
 ## Troubleshooting
 
-- **CUDA mismatch / “CUDA driver version is insufficient”:**  
+- **CUDA mismatch / “CUDA driver version is insufficient”:**
   Ensure your installed PyTorch build matches your system CUDA (or use the CPU build).
-- **Out of GPU memory:**  
+- **Out of GPU memory:**
   Reduce `batch_size` and/or sequence length; consider gradient accumulation or mixed precision (AMP).
-- **Dataset path errors:**  
+- **Dataset path errors:**
   Double-check `dataset_root` in `src/args.py` and that the expected subfolders/files exist.
-- **Image not rendering in README:**  
+- **Image not rendering in README:**
   Confirm the filename is exactly `CellSplceNet.png` in the repository root (case-sensitive on Linux).
 
 ---
 
 ## Other implementation details
-All experiments are conducted on a single A100 GPU. Data loading and preprocessing pipelines are implemented with standard libraries. Reproducibility is ensured via fixed random seeds and environment specification. Preprocessing scripts, end-to-end training and inference scripts, and pretrained model checkpoints are available in the public repository. 
+All experiments are conducted on a single A100 GPU. Data loading and preprocessing pipelines are implemented with standard libraries. Reproducibility is ensured via fixed random seeds and environment specification. Preprocessing scripts, end-to-end training and inference scripts, and pretrained model checkpoints are available in the public repository.
 
 We partitioned the data with a row-level IID random split into training (65\%), validation (15\%), and test (20\%) by drawing a uniform random assignment for each observation. To assess robustness, we additionally performed k-fold cross-validation and repeated the entire training/testing procedure ten independent times with different random seeds. All preprocessing and partitioning scripts are available in the repository under the preprocessing (pp/) folder. To prevent leakage, all normalizers/tokenizers were fit on train only; genomic windows/ROIs were generated once and constrained to not cross splits; augmentation was train-only; and early stopping/hyperparameters were selected on validation with the test set revealed once at the end.
 
@@ -169,9 +175,9 @@ We partitioned the data with a row-level IID random split into training (65\%), 
 ## Contributing
 
 Contributions are welcome! Please open an issue to discuss major changes. For pull requests:
-1. Fork the repo and create a feature branch.  
-2. Add or update tests if applicable.  
-3. Ensure style/formatting is consistent.  
+1. Fork the repo and create a feature branch.
+2. Add or update tests if applicable.
+3. Ensure style/formatting is consistent.
 4. Open a PR with a clear description and motivation.
 
 ---
