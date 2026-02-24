@@ -14,7 +14,7 @@ from seed import seed_everything
 from log_utils import log
 
 import_dir = '/'.join(os.path.realpath(__file__).split('/')[:-3])
-sys.path.insert(0, import_dir + '/cellsplicenet-main/')
+sys.path.insert(0, import_dir + '/src/')
 from data.splicedata_dataloader import splicedata_dataloader
 from args import argparser_fn
 

@@ -7,6 +7,8 @@ import argparse
 import ast
 import re
 
+ROOT_DIR = '/'.join(os.path.realpath(__file__).split('/')[:-3])
+
 
 def init_base_config(path_to_config_dir):
 
@@ -25,7 +27,7 @@ def init_base_config(path_to_config_dir):
     config.add_section("info")
 
     fname = pathlib.Path(path_to_config_dir).joinpath("data_config.ini")
- 
+
     with open(fname, "w") as f:
         config.write(f)
 
@@ -56,15 +58,15 @@ def update_config(path_to_config_dir, level, key, value):
         config.write(f)
 
 
-def get_config_val(path_to_config_dir, level, key):
+# def get_config_val(path_to_config_dir, level, key):
 
-    path_to_config_dir = check_path_dtype(path_to_config_dir)
+#     path_to_config_dir = check_path_dtype(path_to_config_dir)
 
-    fname = path_to_config_dir.joinpath("data_config.ini")
+#     fname = path_to_config_dir.joinpath("data_config.ini")
 
-    config = configparser.ConfigParser()
-    config.read(fname)
-    return config[level][key]
+#     config = configparser.ConfigParser()
+#     config.read(fname)
+#     return config[level][key]
 
 
 
@@ -74,6 +76,9 @@ def get_config_val_from_file(path_to_config_file, level, key):
 
     config = configparser.ConfigParser()
     config.read(path_to_config_file)
+    if '$ROOT' in config[level][key]:
+        return config[level][key].replace('$ROOT', ROOT_DIR)
+    import pdb; pdb.set_trace()
     return config[level][key]
 
 
@@ -117,5 +122,5 @@ def load_config_as_namespace(path_to_config_dir):
 
     config_ns = {"files": files_ns, "params": params_ns, "info": info_ns}
     config_ns = Namespace(**config_ns)
- 
+
     return config_ns
