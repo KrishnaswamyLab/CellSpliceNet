@@ -78,7 +78,6 @@ def get_config_val_from_file(path_to_config_file, level, key):
     config.read(path_to_config_file)
     if '$ROOT' in config[level][key]:
         return config[level][key].replace('$ROOT', ROOT_DIR)
-    import pdb; pdb.set_trace()
     return config[level][key]
 
 
