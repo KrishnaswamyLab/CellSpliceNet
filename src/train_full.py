@@ -44,34 +44,18 @@ from viz.training_scatter import scatter_plot
 from model import model_registry
 
 
-def _env(name, default):
-    v = os.environ.get(name)
-    return v if v is not None else default
-
-
-def parse_run_control():
-    """Run-budget / logging knobs not already in args.py. CLI flags win;
-    env vars (used by the sbatch wrappers) are the fallback defaults. Parsed
-    with parse_known_args so the model/data flags pass through to argparser_fn.
+def parse_data_tag():
+    """Bootstrap-parse only the short dataset tag, which must be known before
+    argparser_fn runs (it builds dataset_type and the default data paths from
+    it). Everything else — paths, sfgenes, run-budget knobs — lives in args.py
+    and shows up in `--help`. Uses parse_known_args so the rest passes through.
     """
     p = argparse.ArgumentParser(add_help=False)
-    p.add_argument("--data_tag", default=_env("DATASET_TAG", "gtex"),
-                   help="Short dataset tag; expands to dataset_type '01Feb2025_<tag>'.")
-    p.add_argument("--time_budget_s", type=float,
-                   default=float(_env("TIME_BUDGET_S", str(5 * 3600 + 50 * 60))),
-                   help="Wallclock budget in seconds; stop cleanly before SLURM walltime.")
-    p.add_argument("--valid_max_batches", type=int,
-                   default=int(_env("VALID_MAX_BATCHES", "200")),
-                   help="Cap validation iterations so each eval stays short.")
-    p.add_argument("--save_step_ckpt_every", type=int,
-                   default=int(_env("SAVE_STEP_CKPT_EVERY", "10")),
-                   help="Save a step checkpoint every Nth validation (best+final always saved). 0 disables.")
-    p.add_argument("--log_every_iters", type=int,
-                   default=int(_env("LOG_EVERY_ITERS", "50")))
-    p.add_argument("--log_every_secs", type=float,
-                   default=float(_env("LOG_EVERY_SECS", "30")))
-    rc, _ = p.parse_known_args()
-    return rc
+    p.add_argument("--data_tag", default=os.environ.get("DATASET_TAG", "gtex"),
+                   help="Short dataset tag; expands to dataset_type '01Feb2025_<tag>' "
+                        "(e.g. gtex with --sfgenes 493, or a worm tag with --sfgenes 243).")
+    a, _ = p.parse_known_args()
+    return a.data_tag
 
 
 def quick_validate(model, loader, max_batches, device):
@@ -94,11 +78,12 @@ def quick_validate(model, loader, max_batches, device):
 
 
 def main():
-    rc = parse_run_control()
+    data_tag = parse_data_tag()
 
     # argparser_fn reads the remaining flags from sys.argv (paths, sfgenes,
-    # lr, n_steps, eval_every_iteration, device, batch_size, ...).
-    args = argparser_fn(dataset_type=rc.data_tag)
+    # lr, n_steps, eval_every_iteration, device, batch_size, and the run-budget
+    # knobs: time_budget_s, valid_max_batches, save_step_ckpt_every, log_*).
+    args = argparser_fn(dataset_type=data_tag)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
     device = torch.device(args.device)
 
@@ -133,9 +118,9 @@ def main():
     prt_eval = ("[full] step %6d | train loss (avg-since-last): %4.3f | "
                 "valid loss: %4.3f | GPU: %.0f MB | elapsed: %.0fs")
 
-    print(f"[full] step-based loop: n_steps={n_steps}, time_budget={rc.time_budget_s:.0f}s "
-          f"({rc.time_budget_s / 3600:.1f}h), eval_every={eval_every}, "
-          f"valid_max_batches={rc.valid_max_batches}", flush=True)
+    print(f"[full] step-based loop: n_steps={n_steps}, time_budget={args.time_budget_s:.0f}s "
+          f"({args.time_budget_s / 3600:.1f}h), eval_every={eval_every}, "
+          f"valid_max_batches={args.valid_max_batches}", flush=True)
 
     t_start = time.time()
     t_last_log = t_start
@@ -156,10 +141,10 @@ def main():
             now = time.time()
             gpu_mb = torch.cuda.memory_allocated() / 1024**2 if torch.cuda.is_available() else 0.0
 
-            if (step % rc.log_every_iters == 0) or (now - t_last_log >= rc.log_every_secs):
+            if (step % args.log_every_iters == 0) or (now - t_last_log >= args.log_every_secs):
                 elapsed = now - t_start
                 rate = step / max(elapsed, 1e-6)
-                remaining = max(rc.time_budget_s - elapsed, 0)
+                remaining = max(args.time_budget_s - elapsed, 0)
                 print(f"[full] step {step}/{n_steps} loss={loss_i.item():.4f} "
                       f"gpu={gpu_mb:.0f}MB rate={rate:.2f} it/s "
                       f"elapsed={elapsed:.0f}s budget_left={remaining:.0f}s", flush=True)
@@ -169,7 +154,7 @@ def main():
                 train_loss = float(np.mean(trlosses_window)) if trlosses_window else float("nan")
                 trlosses_window = []
                 valid_loss, preds_v, targets_v = quick_validate(
-                    model, valid_loader, rc.valid_max_batches, device)
+                    model, valid_loader, args.valid_max_batches, device)
                 if preds_v.numel() > 0:
                     scatter_plot(
                         gt_tensor=targets_v, pred_tensor=preds_v,
@@ -190,12 +175,12 @@ def main():
                     json.dump(loss_dict, f)
 
                 n_valid = len(loss_dict["step"])
-                if rc.save_step_ckpt_every > 0 and n_valid % rc.save_step_ckpt_every == 0:
+                if args.save_step_ckpt_every > 0 and n_valid % args.save_step_ckpt_every == 0:
                     torch.save(model.to("cpu"), args.output_dir + f"/model/step_{step}_model.pth")
                     model.to(device)
                 scheduler.step()
 
-            if step >= n_steps or (time.time() - t_start) >= rc.time_budget_s:
+            if step >= n_steps or (time.time() - t_start) >= args.time_budget_s:
                 done = True
                 break
 

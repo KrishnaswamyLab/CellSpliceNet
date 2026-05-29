@@ -54,7 +54,18 @@ class splicedata_dataloader():
 
         # self.sf_tsv_fname = config_read(self.config_fname, "processed_files", "sf_list")
         self.sj_inds_fname = config_read(self.config_fname, "processed_files", "spliceregion_inds")
-        self.events_coordinates_fname = config_read(self.config_fname, "processed_files", "events_coordinates")
+        # events_coordinates is optional: a --events_coordinates flag wins, else
+        # the config key if present, else "" (worm neuron_replicate data carries
+        # coords inline and doesn't need it; dataloader.setup raises a clear error
+        # if a non-replicate dataset actually needs it and none was provided).
+        events_override = getattr(hparams, "events_coordinates", "") or ""
+        if events_override:
+            self.events_coordinates_fname = events_override
+        else:
+            try:
+                self.events_coordinates_fname = config_read(self.config_fname, "processed_files", "events_coordinates")
+            except KeyError:
+                self.events_coordinates_fname = ""
         # self.var_genes_fname = config_read(self.config_fname, "processed_files", "top300variablegenes")
 
         # gene embeds - new 

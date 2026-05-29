@@ -135,13 +135,25 @@ pip install -r requirements.txt
 
 ## Quickstart: Train & Validate
 
-Run the default training loop (includes validation as configured):
+The recommended, path-agnostic trainer is the step-based `src/train_full.py`
+(works for both worm and GTEx); `src/train.py` is the legacy epoch-based loop.
+See **[TRAINING.md](TRAINING.md)** for data layout, worm vs GTEx commands,
+expression-encoder options, run-budget knobs, and outputs.
+
 ```bash
+# step-based trainer (paths via flags; see TRAINING.md / --help)
+python src/train_full.py --data_tag gtex --sfgenes 493 \
+    --config_fname /path/data_config.ini \
+    --expression_data_root /path/train_data.csv \
+    --structure_data_root /path/structure_scattering_dict.pkl \
+    --scatter_coeffs_dir /path/scatter_coeffs
+
+# legacy epoch-based trainer (small worm dataset / paper reproduction)
 python src/train.py
 ```
 
-- Logs, checkpoints, and metrics will be saved as defined in `src/utils` (and/or your config).
-- For experiment control (epochs, batch size, etc.), update `src/args.py` (or your config system if present).
+- Checkpoints/metrics are written under `<repo>/outputs/<model>/<run-key>/` (see TRAINING.md).
+- For experiment control (steps, batch size, time budget, etc.) pass flags or edit `src/args.py`.
 
 ---
 

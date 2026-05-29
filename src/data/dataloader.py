@@ -24,6 +24,13 @@ class dataloader(Dataset):
         filtered_df = self.data_csv[self.data_csv["p_seq_len"] < self.max_prime_seq_len]
         self.filtered_df = filtered_df
         if 'neuron_replicate' not in self.dataset_type:
+            if not self.events_coordinates_path:
+                raise ValueError(
+                    "events_coordinates is required for this dataset_type "
+                    f"({self.dataset_type!r}) but none was provided. Add it under "
+                    "[processed_files] in data_config.ini, or pass "
+                    "--events_coordinates <path>. (Not needed for neuron_replicate data.)"
+                )
             self.events_coordinates = pd.read_csv(self.events_coordinates_path, sep=None, engine='python')
             # O(1) lookup by event_id (one row per event). Avoids O(N) pandas
             # filters per __getitem__ call.

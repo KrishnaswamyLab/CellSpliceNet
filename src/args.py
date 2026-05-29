@@ -159,6 +159,50 @@ def argparser_fn(dataset_type, batch_size=40, server='misha'):
         help="Directory with <neuron>_graph.pt (PyG Data per neuron). Required when --expression_encoder=gnn.",
     )
 
+    # Optional explicit events-coordinates table. Overrides the
+    # [processed_files] events_coordinates key in data_config.ini. Not needed
+    # for neuron_replicate datasets (coords come inline with each row).
+    parser.add_argument(
+        "--events_coordinates",
+        default="",
+        type=str,
+        help="Path to events_coordinates table. Empty: read from data_config.ini [processed_files] events_coordinates.",
+    )
+
+    # Step-based trainer (train_full.py) run-budget / logging knobs. Each
+    # defaults to an env var so sbatch wrappers that export them keep working;
+    # pass the flag to override.
+    parser.add_argument(
+        "--time_budget_s",
+        type=float,
+        default=float(os.environ.get("TIME_BUDGET_S", str(5 * 3600 + 50 * 60))),
+        help="Wallclock budget in seconds; train_full.py stops cleanly before the SLURM walltime (default ~5h50m).",
+    )
+    parser.add_argument(
+        "--valid_max_batches",
+        type=int,
+        default=int(os.environ.get("VALID_MAX_BATCHES", "200")),
+        help="Cap validation iterations per eval so each validation pass stays short (train_full.py).",
+    )
+    parser.add_argument(
+        "--save_step_ckpt_every",
+        type=int,
+        default=int(os.environ.get("SAVE_STEP_CKPT_EVERY", "10")),
+        help="Save a step checkpoint every Nth validation (best+final always saved); 0 disables (train_full.py).",
+    )
+    parser.add_argument(
+        "--log_every_iters",
+        type=int,
+        default=int(os.environ.get("LOG_EVERY_ITERS", "50")),
+        help="Per-iteration progress log cadence in steps (train_full.py).",
+    )
+    parser.add_argument(
+        "--log_every_secs",
+        type=float,
+        default=float(os.environ.get("LOG_EVERY_SECS", "30")),
+        help="Per-iteration progress log cadence in seconds (train_full.py).",
+    )
+
     # parser.add_argument("--total_genes", default=-1, type=int)
 
     # auxiliary arguments
