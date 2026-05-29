@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Environments
+.env
+.venv/
+env/
+venv/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Outputs / data (kept out of the repo; pass paths via --dataset_root etc.)
+outputs/
+*.pt
+*.pkl
+*.tsv
+*.ckpt
