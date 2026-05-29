@@ -2,13 +2,16 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 import pandas as pd
+import os
+
+ROOT_DIR = '/'.join(os.path.realpath(__file__).split('/')[:-3])
 
 class dataloader(Dataset):
     def __init__(self, data_csv, sequence_mod_data, dataset_type): #, gene_embed_dict):#, auxiliary_data):
 
-        self.dataset_type = dataset_type 
+        self.dataset_type = dataset_type
         # data files
-        self.data_csv = data_csv 
+        self.data_csv = data_csv
         # sequence
         self.prime_seq_dict = sequence_mod_data["primary_sequence"]
         self.sj_seq_dict = sequence_mod_data["sj_sequence"]
@@ -52,9 +55,12 @@ class dataloader(Dataset):
     def __getitem__(self, idx):
         raw_datapoint = self.filtered_df.iloc[idx]  
 
-        neuron_idx = torch.LongTensor([self.NEURON_TYPE_ENCODING[raw_datapoint["neuron"]]]).reshape(1, -1)  
-        
-        if 'neuron_replicate' in self.dataset_type: 
+    def __getitem__(self, idx):
+        raw_datapoint = self.filtered_df.iloc[idx]
+
+        neuron_idx = torch.LongTensor([self.NEURON_TYPE_ENCODING[raw_datapoint["neuron"]]]).reshape(1, -1)
+
+        if 'neuron_replicate' in self.dataset_type:
             meta_data = {
                 'gene_id': raw_datapoint["gene_id"],
                 'event_id': raw_datapoint["event_id"],
@@ -67,7 +73,7 @@ class dataloader(Dataset):
                 'exon_end': raw_datapoint['exon_end'],
                 'intron_start': raw_datapoint['intron_start'],
                 'intron_end': raw_datapoint['intron_end'],
-                'gene_length': raw_datapoint['gene_length'], 
+                'gene_length': raw_datapoint['gene_length'],
                 'neuron_idx': neuron_idx
             }
         else: 
@@ -81,10 +87,10 @@ class dataloader(Dataset):
                 'gene_id': raw_datapoint["gene_id"],
                 'event_id': raw_datapoint["event_id"],
                 'nb_reads': raw_datapoint["nb_reads"],
-                'neuron': raw_datapoint["neuron"], 
+                'neuron': raw_datapoint["neuron"],
                 'p_seq_len': raw_datapoint['p_seq_len'],
-                'sj_seq_len': raw_datapoint['sj_seq_len'], 
-                'gene_length': gene_length, 
+                'sj_seq_len': raw_datapoint['sj_seq_len'],
+                'gene_length': gene_length,
                 'exon_start': exon_start,
                 'exon_end': exon_end,
                 'intron_start': intron_start,
@@ -119,7 +125,7 @@ class dataloader(Dataset):
         padded_p_annot_seq = F.pad(sj_annot_seq, (left_p_seq_pad, right_p_seq_pad), value=3)
 
         # sequence padding
-        p_seq = p_seq.flatten() 
+        p_seq = p_seq.flatten()
         p_padding_size = self.max_prime_seq_len - len(p_seq.flatten())
         padded_p_seq = F.pad(p_seq, (0, p_padding_size), value=self.pad_indx)
         padded_p_seq = padded_p_seq.reshape(1, -1)
@@ -136,31 +142,31 @@ class dataloader(Dataset):
         padded_p_annot_seq = padded_p_annot_seq[..., :self.max_prime_seq_len]
         # target 
         psi_val = torch.Tensor([raw_datapoint["PSI"]]).reshape(1, 1)
-        
-        nb_reads = torch.Tensor([raw_datapoint["nb_reads"]]).reshape(1, 1)  
-        
+
+        nb_reads = torch.Tensor([raw_datapoint["nb_reads"]]).reshape(1, 1)
+
         if 'singlereplicant' in self.dataset_type:
             delta_psi_val = torch.Tensor([raw_datapoint["DELTA PSI"]]).reshape(1, 1)
             targets = {
                 'psi': psi_val,
                 'delta_psi': delta_psi_val,
             }
-        else: 
+        else:
             targets = {
-                'psi': psi_val, 
+                'psi': psi_val,
             }
- 
+
         processed_datapoint = [
             meta_data,
             [
                 padded_p_seq,
-                padded_p_annot_seq, 
+                padded_p_annot_seq,
                 neuron_idx
-            ], 
-            targets 
-        ] 
-        
-        return processed_datapoint  
+            ],
+            targets
+        ]
+
+        return processed_datapoint
 
     def __len__(self):
         return len(self.filtered_df)
