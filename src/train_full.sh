@@ -30,7 +30,9 @@ EXPRESSION_DATA_ROOT="${EXPRESSION_DATA_ROOT:-$DATA_DIR/train_data.csv}"
 STRUCTURE_DATA_ROOT="${STRUCTURE_DATA_ROOT:-$DATA_DIR/structure_scattering_dict.pkl}"
 SCATTER_DIR="${SCATTER_DIR:-$DATA_DIR/scatter_coeffs}"
 
-# --- Run-budget knobs (CLI flags; see train_full.py for the full list) ---
+# --- Dataset + run-budget knobs (CLI flags; see train_full.py for the full list) ---
+# Keep DATA_TAG and SFGENES consistent: gtex<->493, a worm tag<->243.
+DATA_TAG="${DATA_TAG:-gtex}"       # 'gtex' or a worm tag (e.g. 'replicate')
 SFGENES="${SFGENES:-493}"          # 493 = GTEx, 243 = worm
 BATCH_SIZE="${BATCH_SIZE:-8}"
 N_STEPS="${N_STEPS:-300000}"
@@ -38,6 +40,7 @@ EVAL_EVERY="${EVAL_EVERY:-2000}"
 TIME_BUDGET_S="${TIME_BUDGET_S:-172000}"   # stop cleanly before the 48h walltime
 
 python src/train_full.py \
+    --data_tag             "$DATA_TAG" \
     --config_fname         "$CONFIG_FNAME" \
     --expression_data_root "$EXPRESSION_DATA_ROOT" \
     --structure_data_root  "$STRUCTURE_DATA_ROOT" \

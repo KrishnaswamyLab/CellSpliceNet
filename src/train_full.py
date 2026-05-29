@@ -51,9 +51,10 @@ def parse_data_tag():
     and shows up in `--help`. Uses parse_known_args so the rest passes through.
     """
     p = argparse.ArgumentParser(add_help=False)
-    p.add_argument("--data_tag", default=os.environ.get("DATASET_TAG", "gtex"),
-                   help="Short dataset tag; expands to dataset_type '01Feb2025_<tag>' "
-                        "(e.g. gtex with --sfgenes 493, or a worm tag with --sfgenes 243).")
+    p.add_argument("--data_tag", default=os.environ.get("DATASET_TAG", "replicate"),
+                   help="Short dataset tag; expands to dataset_type '01Feb2025_<tag>'. "
+                        "Default 'replicate' = worm (matches --sfgenes 243); for GTEx pass "
+                        "--data_tag gtex --sfgenes 493.")
     a, _ = p.parse_known_args()
     return a.data_tag
 
