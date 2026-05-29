@@ -1,3 +1,11 @@
+"""LEGACY epoch-based trainer. Kept for the small worm dataset and for
+reproducing the original paper runs.
+
+For new work (and any large dataset such as GTEx) use ``train_full.py``, the
+step-based trainer: an "epoch" over millions of rows is impractical, and this
+loop also still contains worm-era hardcoded output paths
+(e.g. ``'../../outputs/'``, ``shutil.copytree('../../cellsplice.net/', ...)``).
+"""
 import torch
 import os
 import torch.nn as nn
