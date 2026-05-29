@@ -61,9 +61,8 @@ class cellsplicenet(nn.Module):
         self.adj_factor = 1e-2 
         self.fusion_residual = hparams.fusion_residual
         self.device = hparams.device
-        self.num_splice_factors = 244
-        
- 
+        self.num_splice_factors = hparams.sfgenes + 1
+
         self.min_delta_psi = -0.9071368157027444
         self.max_delta_psi = 0.9162412386278128
  
@@ -245,8 +244,8 @@ class deltacellsplicenet(nn.Module):
         self.adj_factor = 1e-2 
         self.fusion_residual = hparams.fusion_residual
         self.device = hparams.device
-        self.num_splice_factors = 244
-        self.sf_dim = 243
+        self.num_splice_factors = hparams.sfgenes + 1
+        self.sf_dim = hparams.sfgenes
         self.residual_expresion = hparams.residual_expresion
  
         self.min_delta_psi = -0.9071368157027444

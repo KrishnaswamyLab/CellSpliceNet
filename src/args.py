@@ -122,7 +122,40 @@ def argparser_fn(dataset_type, batch_size=40, server='misha'):
     parser.add_argument("--topkgenes_bool", default=False, type=str2bool) ## top highly variable genes
     parser.add_argument("--topkgenes", default=5, type=int)
     parser.add_argument("--sfgenes_bool", default=True, type=str2bool)
-    parser.add_argument("--sfgenes", default=243, type=int)
+    parser.add_argument(
+        "--sfgenes",
+        default=243,
+        type=int,
+        help="Splice-factor genes in scatter .pt. Default 243 = worm (paper baseline); for GTEx pass --sfgenes 493 (must match preprocessing/expression_gtex build_meta.json n_genes).",
+    )
+    parser.add_argument(
+        "--scatter_coeffs_dir",
+        default="",
+        type=str,
+        help="Directory with scatter_coeffs_<tissue>.pt (GTEx) or <neuron>.pt (worm ablations). Empty: parent of expression_data_root / scatter_coeffs_gtex",
+    )
+
+    # Expression-encoder ablation knobs (R2 reviewer ask). All optional; defaults
+    # preserve the original scatter-coeff baseline. The driver sets these per-run.
+    parser.add_argument(
+        "--expression_encoder",
+        default="scatter",
+        type=str,
+        choices=["scatter", "mlp", "gnn"],
+        help="Which expression encoder to use: scatter (paper anchor, geometric scattering), mlp (per-gene mean vector), gnn (GCN over MI/corr graph).",
+    )
+    parser.add_argument(
+        "--mean_vec_dir",
+        default="",
+        type=str,
+        help="Directory with <neuron>_mean.pt (one mean expression vector per gene). Required when --expression_encoder=mlp.",
+    )
+    parser.add_argument(
+        "--graph_metric_dir",
+        default="",
+        type=str,
+        help="Directory with <neuron>_graph.pt (PyG Data per neuron). Required when --expression_encoder=gnn.",
+    )
 
     # parser.add_argument("--total_genes", default=-1, type=int)
 

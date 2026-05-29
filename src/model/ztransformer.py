@@ -4,6 +4,7 @@ import math
 from einops import rearrange, repeat, pack 
 
 from nn.expression import GraphExpressionModality as ExpressionModality
+from nn.expression import build_expression_modality
 from nn.sequence import EntireSeqModality
 from nn.roi import LocalSeqModality
 from nn.structure import StructureModality
@@ -117,15 +118,28 @@ class BioZorro(nn.Module):
         super().__init__()
         # Initialization of model parameters and tokens
         self.initialize_params(hparams)  
-        if 'neuron_replicate' in hparams.dataset_type:
-            from nn.expression_singlereplicant import ExpressionModality as ExpressionModality
-        else: 
-            from nn.expression import GraphExpressionModality as ExpressionModality
-
         # Initialize modality models
         self.sequence_model = EntireSeqModality(self.window_size, self.new_seq_length, self.eff_window_size, self.vocab_size, self.annot_vocab_size, self.hidden_dim, self.pad_indx)
         self.local_roi_model = LocalSeqModality(hparams, self.hidden_dim)
-        self.expression_model = ExpressionModality(self.exp_dim, self.coeff_dim, self.hidden_dim, self.gene_embed_bool, self.bin_exp, self.ntype_feature_bool, hparams.expression_data_root, self.save_output_hook)
+
+        scdir = getattr(hparams, "scatter_coeffs_dir", "") or None
+        mvdir = getattr(hparams, "mean_vec_dir", "") or None
+        gmdir = getattr(hparams, "graph_metric_dir", "") or None
+        encoder = getattr(hparams, "expression_encoder", "scatter") or "scatter"
+        self.expression_model = build_expression_modality(
+            encoder,
+            exp_dim=self.exp_dim,
+            coeff_dim=self.coeff_dim,
+            hidden_dim=self.hidden_dim,
+            gene_embed_bool=self.gene_embed_bool,
+            bin_exp=self.bin_exp,
+            ntype_feature_bool=self.ntype_feature_bool,
+            expression_data_root=hparams.expression_data_root,
+            save_output_hook=self.save_output_hook,
+            scatter_coeffs_dir=scdir,
+            mean_vec_dir=mvdir,
+            graph_metric_dir=gmdir,
+        )
         self.local_structure_model = StructureModality(self.seq_coeff_dim, self.hidden_dim, structure_data_root=hparams.structure_data_root, structure_length=hparams.structure_length)
         self.ztransformer = ZorroTransformer(num_layers=hparams.layers, hidden_dim=self.hidden_dim, dim_head=64, nhead=hparams.nhead, device=self.device).to(self.device)
 
@@ -153,7 +167,7 @@ class BioZorro(nn.Module):
         self.save_output_hook = OutputHook()
         self.gene_embed_bool = hparams.gene_embed_bool
         self.coeff_dim = 2662 #hparams.dataparams.coeff_dim
-        self.exp_dim = 243 #242 #hparams.dataparams.exp_dim
+        self.exp_dim = hparams.sfgenes
         self.seq_coeff_dim = hparams.seq_coeff_dim
         self.device = hparams.device
         self.local_seq_length = hparams.local_seq_length

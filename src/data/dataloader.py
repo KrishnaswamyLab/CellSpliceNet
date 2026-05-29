@@ -15,15 +15,39 @@ class dataloader(Dataset):
         self.sj_inds_df = sequence_mod_data["sj_inds_df"]
         self.max_prime_seq_len = sequence_mod_data["max_prime_seq_len"]
         self.max_sj_seq_len = sequence_mod_data["max_sj_seq_len"]
-        self.pad_indx = sequence_mod_data["pad_indx"] 
+        self.pad_indx = sequence_mod_data["pad_indx"]
+        self.events_coordinates_path = sequence_mod_data["events_coordinates_path"]
         # self.gene_embed_dict = gene_embed_dict 
         self.NEURON_TYPE_ENCODING = neuron_type_fn()
 
-    def setup(self):   
-        filtered_df = self.data_csv[self.data_csv["p_seq_len"] < self.max_prime_seq_len]   
-        self.filtered_df = filtered_df  
-        if 'neuron_replicate' not in self.dataset_type: 
-            self.events_coordinates = pd.read_csv('~/project/cellnn/dataset/Alternative-Splicing/01Feb2025_replicate/240910_events_coordinates.tsv', sep='\t')
+    def setup(self):
+        filtered_df = self.data_csv[self.data_csv["p_seq_len"] < self.max_prime_seq_len]
+        self.filtered_df = filtered_df
+        if 'neuron_replicate' not in self.dataset_type:
+            self.events_coordinates = pd.read_csv(self.events_coordinates_path, sep=None, engine='python')
+            # O(1) lookup by event_id (one row per event). Avoids O(N) pandas
+            # filters per __getitem__ call.
+            self.events_coords_by_event = {
+                r['event_id']: r for r in self.events_coordinates.to_dict('records')
+            }
+        # sj_inds_df is also unique per event_id.
+        self.sj_inds_by_event = {
+            r['event_id']: r for r in self.sj_inds_df.to_dict('records')
+        }
+        # GTEx and worm differ on prime_seq_dict keying:
+        #   - GTEx: per-event 25kb windows, keyed by event_id
+        #   - worm: per-gene full sequences, keyed by gene_id (WBGene*)
+        # Pick the mode once at setup so __getitem__ doesn't have to.
+        sample = filtered_df.iloc[0]
+        if sample["event_id"] in self.prime_seq_dict:
+            self._prime_seq_key = "event_id"
+        elif sample["gene_id"] in self.prime_seq_dict:
+            self._prime_seq_key = "gene_id"
+        else:
+            raise KeyError(
+                f"prime_seq_dict has neither event_id {sample['event_id']!r} nor "
+                f"gene_id {sample['gene_id']!r} for the first row; check enc_seq_file path."
+            )
      
     def __getitem__(self, idx):
         raw_datapoint = self.filtered_df.iloc[idx]  
@@ -47,13 +71,12 @@ class dataloader(Dataset):
                 'neuron_idx': neuron_idx
             }
         else: 
-            events_coordinates_i = self.events_coordinates[self.events_coordinates['gene_id']==raw_datapoint['gene_id']]
-            events_coordinates_i = events_coordinates_i[events_coordinates_i['event_id'] == raw_datapoint['event_id']] 
-            exon_start = events_coordinates_i['exon_start'].item()
-            exon_end = events_coordinates_i['exon_end'].item()
-            intron_start = events_coordinates_i['intron_start'].item()
-            intron_end = events_coordinates_i['intron_end'].item()
-            gene_length = events_coordinates_i['gene_length'].item() 
+            events_coordinates_i = self.events_coords_by_event[raw_datapoint['event_id']]
+            exon_start = events_coordinates_i['exon_start']
+            exon_end = events_coordinates_i['exon_end']
+            intron_start = events_coordinates_i['intron_start']
+            intron_end = events_coordinates_i['intron_end']
+            gene_length = events_coordinates_i['gene_length']
             meta_data = {
                 'gene_id': raw_datapoint["gene_id"],
                 'event_id': raw_datapoint["event_id"],
@@ -68,22 +91,19 @@ class dataloader(Dataset):
                 'intron_end': intron_end,
             }
   
-        # neuron type  
-        # sequence modality  
-        p_seq = self.prime_seq_dict[raw_datapoint["gene_id"]]
+        # neuron type
+        # sequence modality
+        p_seq = self.prime_seq_dict[raw_datapoint[self._prime_seq_key]]
         sj_data = self.sj_seq_dict[raw_datapoint["event_id"]]
 
         # construct sequence
         p_seq = p_seq.reshape(1, -1)
         sj_annot_seq = sj_data[1, :].reshape(1, -1)
 
-        # get splice region coordinates
-        it_sj_df = self.sj_inds_df[self.sj_inds_df["event_id"] == raw_datapoint["event_id"]]
-        assert len(it_sj_df) == 1
-
-        # get starting and ending splice junction indieces
-        sj_st_indx = int(it_sj_df["sj_st_indx"].iloc[0])
-        sj_end_indx = int(it_sj_df["sj_end_indx"].iloc[0])
+        # get splice region coordinates (O(1) dict lookup)
+        sj_row = self.sj_inds_by_event[raw_datapoint["event_id"]]
+        sj_st_indx = int(sj_row["sj_st_indx"])
+        sj_end_indx = int(sj_row["sj_end_indx"])
         end_indx = len(p_seq.flatten())
 
         # # append to meta data
@@ -107,7 +127,13 @@ class dataloader(Dataset):
         # annotation padding
         padded_p_annot_seq = padded_p_annot_seq.flatten()
         padded_p_annot_seq = F.pad(padded_p_annot_seq, (0, p_padding_size), value=self.pad_indx)
-        padded_p_annot_seq = padded_p_annot_seq.reshape(1, -1) 
+        padded_p_annot_seq = padded_p_annot_seq.reshape(1, -1)
+
+        # Edge events: ~0.4% of GTEx events have sj_end_indx - sj_st_indx < 500
+        # (cassette exon near window boundary), which makes the F.pad above overshoot
+        # max_prime_seq_len. Truncate to guarantee uniform shape for batch collate.
+        padded_p_seq       = padded_p_seq[..., :self.max_prime_seq_len]
+        padded_p_annot_seq = padded_p_annot_seq[..., :self.max_prime_seq_len]
         # target 
         psi_val = torch.Tensor([raw_datapoint["PSI"]]).reshape(1, 1)
         
@@ -198,8 +224,14 @@ def neuron_type_fn():
         # "PVPx":53,
         # "PVPx":54,
         # "PVPx":55,
-        # "PVPx":56, 
+        # "PVPx":56,
     }
-    return NEURON_TYPE_ENCODING
+    try:
+        from data.gtex_tissue_encoding import gtex_tissue_type_encoding
 
- 
+        NEURON_TYPE_ENCODING.update(
+            gtex_tissue_type_encoding(len(NEURON_TYPE_ENCODING))
+        )
+    except (FileNotFoundError, ImportError):
+        pass
+    return NEURON_TYPE_ENCODING
