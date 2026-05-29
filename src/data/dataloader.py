@@ -2,9 +2,6 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 import pandas as pd
-import os
-
-ROOT_DIR = '/'.join(os.path.realpath(__file__).split('/')[:-3])
 
 class dataloader(Dataset):
     def __init__(self, data_csv, sequence_mod_data, dataset_type): #, gene_embed_dict):#, auxiliary_data):

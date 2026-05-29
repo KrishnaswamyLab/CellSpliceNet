@@ -77,7 +77,7 @@ def argparser_fn(dataset_type, batch_size=40, server='misha'):
     parser.add_argument("--dataset_type", default='01Feb2025_'+dataset_type, type=str)
 
     parser.add_argument("--dataset_root", default=dataset_root, type=str)
-    parser.add_argument("--config_fname", default=os.path.join(dataset_root, 'Alternative-Splicing/01Feb2025'+dataset_type+'/data_config.ini'), type=str)
+    parser.add_argument("--config_fname", default=os.path.join(dataset_root, 'Alternative-Splicing/01Feb2025_'+dataset_type+'/data_config.ini'), type=str)
 
     structure_length = 500
     parser.add_argument("--structure_length", default=structure_length, type=int)
