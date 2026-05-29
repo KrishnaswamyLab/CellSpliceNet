@@ -54,6 +54,7 @@ class splicedata_dataloader():
 
         # self.sf_tsv_fname = config_read(self.config_fname, "processed_files", "sf_list")
         self.sj_inds_fname = config_read(self.config_fname, "processed_files", "spliceregion_inds")
+        self.events_coordinates_fname = config_read(self.config_fname, "processed_files", "events_coordinates")
         # self.var_genes_fname = config_read(self.config_fname, "processed_files", "top300variablegenes")
 
         # gene embeds - new 
@@ -100,6 +101,7 @@ class splicedata_dataloader():
             "max_prime_seq_len": self.max_prime_seq_len,
             "max_sj_seq_len": self.max_sj_seq_len,
             "pad_indx": self.pad_indx,
+            "events_coordinates_path": self.events_coordinates_fname,
         }
 
         # graph_node_stds = ../dataset/processed/addtnl_data/genecoeffs_gstds.csv 
@@ -197,7 +199,9 @@ class splicedata_dataloader():
         return DataLoader(
             self.train_data,
             batch_size=self.batch_size,
-            num_workers=1,
+            num_workers=8,
+            persistent_workers=True,
+            pin_memory=True,
             shuffle=shuffle_bool,
             collate_fn=sp3_collate_fn,
             drop_last=True
@@ -207,7 +211,9 @@ class splicedata_dataloader():
         return DataLoader(
             self.valid_data,
             batch_size=self.batch_size,
-            num_workers=1,
+            num_workers=8,
+            persistent_workers=True,
+            pin_memory=True,
             shuffle=False,
             collate_fn=sp3_collate_fn,
             drop_last=True
@@ -217,7 +223,9 @@ class splicedata_dataloader():
         return DataLoader(
             self.test_data,
             batch_size=self.batch_size,
-            num_workers=1,
+            num_workers=8,
+            persistent_workers=True,
+            pin_memory=True,
             shuffle=False,
             collate_fn=sp3_collate_fn,
             drop_last=True

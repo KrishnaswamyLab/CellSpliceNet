@@ -9,11 +9,25 @@ import pickle as pk
 import pandas as pd
 
 import pickle
- 
 
-def load_structure(sequence_tensor, metadata, structure_data_root, structure_length):  
-    with open(structure_data_root, 'rb') as file: 
-        data = pickle.load(file) 
+# Module-level cache: the 5.5 GB structure pickle was being re-loaded from disk
+# on every forward pass. Cache by path so it's loaded exactly once.
+_STRUCTURE_CACHE = {}
+
+
+def _get_structure_data(path):
+    if path not in _STRUCTURE_CACHE:
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+        # Build event_id -> index dict once. The original code did O(N)
+        # list.index() per sample per forward pass.
+        data['_event_id_to_idx'] = {eid: i for i, eid in enumerate(data['event_id'])}
+        _STRUCTURE_CACHE[path] = data
+    return _STRUCTURE_CACHE[path]
+
+
+def load_structure(sequence_tensor, metadata, structure_data_root, structure_length):
+    data = _get_structure_data(structure_data_root)
 
     structure_seq_list = data['structure_seq']
     secondary_structure_list = data['secondary_structure']
@@ -21,7 +35,8 @@ def load_structure(sequence_tensor, metadata, structure_data_root, structure_len
     gene_id_list = data['gene_id']
     event_id_list = data['event_id']
     exon_coordinates_list = data['exon_coordinates']
-    intron_coordinates_list = data['intron_coordinates'] 
+    intron_coordinates_list = data['intron_coordinates']
+    event_id_to_idx = data['_event_id_to_idx']
       
     batch_seqstc_coeff = [] 
     structure_annotation = []
@@ -31,10 +46,11 @@ def load_structure(sequence_tensor, metadata, structure_data_root, structure_len
     secondary_structure=[]
     structure_seq_letters = []
  
-    for i, metadata_i in enumerate(metadata):  
-        event_id_i = metadata_i["event_id"] 
+    for i, metadata_i in enumerate(metadata):
+        event_id_i = metadata_i["event_id"]
 
-        index_of_event_in_expression_data = event_id_list.index(event_id_i)  
+        # O(1) dict lookup; was O(60k) list.index() per sample per forward pass.
+        index_of_event_in_expression_data = event_id_to_idx[event_id_i]
 
         structure_seq_i = structure_seq_list[index_of_event_in_expression_data]
         secondary_structure_i = secondary_structure_list[index_of_event_in_expression_data]
@@ -56,8 +72,10 @@ def load_structure(sequence_tensor, metadata, structure_data_root, structure_len
         strcutre_coeff_i = strcutre_coeff_i.sum(-1)
 
         bp_discrete = torch.zeros(structure_length)
-        for seq_index, bp in enumerate(structure_seq_i):   
-            bp_discrete[seq_index] = vocab_map[bp]
+        for seq_index, bp in enumerate(structure_seq_i):
+            # GTEx sequences contain 'N' (ambiguous) and other IUPAC codes not in
+            # the worm-era vocab. Map any unknown base to 'X' (catch-all = 5).
+            bp_discrete[seq_index] = vocab_map.get(bp, vocab_map["X"])
  
         padding_size =  structure_length - strcutre_coeff_i.size(0)
      
