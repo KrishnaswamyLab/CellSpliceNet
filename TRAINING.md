@@ -32,7 +32,7 @@ You don't need to move data into the repo; pass absolute paths. If you'd rather 
 
 ---
 
-## 2. Quickstart — GTEx (49 tissues)
+## 2. Quickstart — human (GTEx, 49 tissues)
 
 ```bash
 module load miniconda && conda activate mioflow   # or your env

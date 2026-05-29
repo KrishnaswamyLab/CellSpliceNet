@@ -135,21 +135,49 @@ pip install -r requirements.txt
 
 ## Quickstart: Train & Validate
 
-The recommended, path-agnostic trainer is the step-based `src/train_full.py`
-(works for both worm and GTEx); `src/train.py` is the legacy epoch-based loop.
-See **[TRAINING.md](TRAINING.md)** for data layout, worm vs GTEx commands,
-expression-encoder options, run-budget knobs, and outputs.
+The recommended, path-agnostic trainer is the step-based `src/train_full.py`;
+`src/train.py` is the legacy epoch-based loop. The same model trains on either
+species — you select it with `--data_tag` and `--sfgenes`. See
+**[TRAINING.md](TRAINING.md)** for the full data layout, expression-encoder
+options, run-budget knobs, and outputs.
+
+### Run on human (GTEx) data
+
+GTEx is the **human** dataset (49 tissues). Point the trainer at your GTEx
+`data_config.ini`, train table, structure pickle, and the per-tissue scatter
+coefficients, and set `--sfgenes 493` (the number of splice-factor genes in the
+GTEx scatter `.pt` files):
 
 ```bash
-# step-based trainer (paths via flags; see TRAINING.md / --help)
-python src/train_full.py --data_tag gtex --sfgenes 493 \
-    --config_fname /path/data_config.ini \
-    --expression_data_root /path/train_data.csv \
-    --structure_data_root /path/structure_scattering_dict.pkl \
-    --scatter_coeffs_dir /path/scatter_coeffs
+python src/train_full.py \
+    --data_tag             gtex \
+    --sfgenes              493 \
+    --config_fname         /path/to/gtex/data_config.ini \
+    --expression_data_root /path/to/gtex/train_data.csv \
+    --structure_data_root  /path/to/gtex/structure_scattering_dict.pkl \
+    --scatter_coeffs_dir   /path/to/gtex/scatter_coeffs \
+    --batch_size 4 --n_steps 200000
+```
 
-# legacy epoch-based trainer (small worm dataset / paper reproduction)
-python src/train.py
+`--data_tag gtex` sets `dataset_type=01Feb2025_gtex`; the scatter directory holds
+one `scatter_coeffs_<tissue>.pt` per tissue. On SLURM, `src/train_full.sh`
+defaults to a GTEx run (`DATA_TAG=gtex`, `SFGENES=493`) — edit the path vars at
+the top and `sbatch` it.
+
+### Run on worm (*C. elegans*) data
+
+Worm is the original target; use a worm tag and `--sfgenes 243`:
+
+```bash
+python src/train_full.py \
+    --data_tag             replicate \
+    --sfgenes              243 \
+    --config_fname         /path/to/worm/data_config.ini \
+    --expression_data_root /path/to/worm/train_data.csv \
+    --structure_data_root  /path/to/worm/structure_scattering_dict.pkl \
+    --scatter_coeffs_dir   /path/to/worm/scatter_coeffs \
+    --events_coordinates   /path/to/worm/events_coordinates.tsv
+# or the legacy epoch-based trainer: python src/train.py
 ```
 
 - Checkpoints/metrics are written under `<repo>/outputs/<model>/<run-key>/` (see TRAINING.md).
