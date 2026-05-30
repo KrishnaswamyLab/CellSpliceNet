@@ -6,7 +6,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
 from setup import COMPARISON_SEQ_LEN, comparison_batch_inputs, comparison_run_paths, load_splicedata, setup_import_paths
-from training import add_comparison_args, resolve_n_samples, run_step_training
+from training import add_comparison_args, run_step_training
 
 setup_import_paths()
 from log_utils import log
@@ -30,7 +30,6 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
-    n_samples = resolve_n_samples(cmd_args.data_tag, cmd_args.n_samples)
 
     model = ESM2().to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.learning_rate)
@@ -53,9 +52,9 @@ if __name__ == "__main__":
         predict_fn=predict,
         log_file=log_file,
         model_save_path=model_save_path,
-        n_samples=n_samples,
+        n_samples=cmd_args.n_samples,
         eval_every=cmd_args.eval_every,
-        valid_max_batches=cmd_args.valid_max_batches,
+        val_max_batches=cmd_args.val_max_batches,
         time_budget_s=cmd_args.time_budget_s,
         method_name="ESM2",
     )

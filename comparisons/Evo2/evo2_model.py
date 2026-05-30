@@ -5,11 +5,30 @@ See: https://github.com/arcinstitute/evo2
 """
 from __future__ import annotations
 
+import logging
+import warnings
+from pathlib import Path
 from typing import Optional
 
 import torch
 import torch.nn as nn
 from evo2 import Evo2
+from vortex import logging as vortex_logging
+from vortex.model.attention import CrossAttention, SelfAttention
+from vortex.model.model import AttentionBlock
+
+
+def _disable_vortex_activations_log_file() -> None:
+    """Stop vortex from writing activations_debug.log to the process cwd."""
+    handler = vortex_logging.activations_file_handler
+    root = logging.getLogger()
+    if handler in root.handlers:
+        root.removeHandler(handler)
+    handler.close()
+    Path("activations_debug.log").unlink(missing_ok=True)
+
+
+_disable_vortex_activations_log_file()
 
 # CellSpliceNet RNA vocab -> ASCII bytes for CharLevelTokenizer (DNA: U->T).
 RNA_TO_BYTE = {
@@ -26,6 +45,39 @@ DEFAULT_MAX_LENGTH = 4096
 # Mid-depth layer; Evo 2 paper notes intermediate embeddings work well.
 DEFAULT_EMBED_LAYER = "blocks.16"
 HIDDEN_SIZE = 4096  # evo2_7b_base config hidden_size
+
+
+def _vortex_flash_attn_available() -> bool:
+    """Probe whether vortex FlashAttention CUDA kernels run on the current GPU."""
+    if not torch.cuda.is_available():
+        return False
+    try:
+        from vortex.ops import local_flash_attn_qkvpacked_func
+    except ImportError:
+        return False
+    device = torch.device("cuda")
+    # evo2_7b: 32 heads, head_dim=128
+    qkv = torch.randn(1, 32, 3, 32, 128, device=device, dtype=torch.bfloat16)
+    try:
+        local_flash_attn_qkvpacked_func(qkv, 0.0, causal=True)
+        return True
+    except RuntimeError:
+        return False
+
+
+def _use_pytorch_attention(backbone) -> None:
+    """Swap vortex FlashAttention modules for PyTorch SDPA (portable across GPU archs)."""
+    backbone.config.use_flash_attn = False
+    for block in backbone.blocks:
+        if not isinstance(block, AttentionBlock):
+            continue
+        mha = block.inner_mha_cls
+        if not mha.use_flash_attn:
+            continue
+        dropout = mha.inner_attn.drop.p if hasattr(mha.inner_attn, "drop") else 0.0
+        mha.use_flash_attn = False
+        mha.inner_attn = SelfAttention(causal=mha.causal, attention_dropout=dropout)
+        mha.inner_cross_attn = CrossAttention(causal=mha.causal, attention_dropout=dropout)
 
 
 class Evo2ForPSI(nn.Module):
@@ -46,6 +98,13 @@ class Evo2ForPSI(nn.Module):
         self._evo2 = Evo2(model_name)
         self.tokenizer = self._evo2.tokenizer
         self.backbone = self._evo2.model
+        if not _vortex_flash_attn_available():
+            warnings.warn(
+                "vortex FlashAttention kernels are unavailable on this GPU; "
+                "using PyTorch scaled_dot_product_attention instead (slower but compatible).",
+                stacklevel=2,
+            )
+            _use_pytorch_attention(self.backbone)
         for param in self.backbone.parameters():
             param.requires_grad = False
         self.backbone.eval()

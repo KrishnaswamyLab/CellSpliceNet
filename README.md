@@ -179,7 +179,7 @@ python train_test_ESM2.py --data-tag replicate --random-seed 1 --batch-size 64 -
 
 Results: `comparisons/results/<Method>/log_<data_tag>_seed-<N>.txt`. SLURM wrappers are in `bash/comparison_*.sh`.
 
-Training budget is **`--n-samples`** (total examples seen; independent of batch size). Validation runs every **`--eval-every`** samples (default 32000). All baselines truncate input to **4096 bp** (`comparisons/utils/setup.py`); ESM2 (1024) and SpliceBERT (510/1024) apply additional model-specific caps.
+Training budget is **`--n-samples`** (default 100000; total examples seen; independent of batch size). Validation runs every **`--eval-every`** samples (default 5000). All baselines truncate input to **4096 bp** (`comparisons/utils/setup.py`); ESM2 (1024) and SpliceBERT (510/1024) apply additional model-specific caps.
 
 ---
 

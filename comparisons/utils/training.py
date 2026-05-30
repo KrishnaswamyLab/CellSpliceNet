@@ -17,35 +17,17 @@ from log_utils import log
 
 PredictFn = Callable[[torch.nn.Module, object, torch.device], tuple[torch.Tensor, torch.Tensor]]
 
-REF_BATCH_SIZE = 64
-DEFAULT_EVAL_EVERY_SAMPLES = REF_BATCH_SIZE * 500
-
-
-def default_n_samples(data_tag: str) -> int:
-    """Default sample budget (ref_steps * REF_BATCH_SIZE). Override with N_SAMPLES env."""
-    if "N_SAMPLES" in os.environ:
-        return int(os.environ["N_SAMPLES"])
-    if data_tag.lower() in ("gtex", "human"):
-        ref_steps = int(os.environ.get("N_STEPS", "200000"))
-    else:
-        ref_steps = int(os.environ.get("N_STEPS", "10000"))
-    return ref_steps * REF_BATCH_SIZE
-
 
 def add_comparison_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--batch-size", default=64, type=int)
-    parser.add_argument("--learning-rate", default=2e-5, type=float)
+    parser.add_argument("--learning-rate", default=1e-4, type=float)
     parser.add_argument("--data-tag", default="replicate", type=str)
     parser.add_argument("--random-seed", default=1, type=int)
     parser.add_argument("--num-workers", default=4, type=int)
-    parser.add_argument("--n-samples", default=50000, type=int, help="Training sample budget (total examples seen; batch-size independent).")
-    parser.add_argument("--eval-every", default=int(os.environ.get("EVAL_EVERY_SAMPLES", str(DEFAULT_EVAL_EVERY_SAMPLES))), type=int, help="Run capped validation every N training samples.")
-    parser.add_argument("--valid-max-batches", default=int(os.environ.get("VALID_MAX_BATCHES", "200")), type=int, help="Max validation batches per eval (train_full.py default).")
+    parser.add_argument("--n-samples", default=20000, type=int, help="Training sample budget (total examples seen; batch-size independent).")
+    parser.add_argument("--eval-every", default=1000, type=int, help="Run capped validation every N training samples.")
+    parser.add_argument("--val-max-batches", default=200, type=int, help="Max validation batches per eval (train_full.py default).")
     parser.add_argument("--time-budget-s", default=None, type=float, help="Optional wallclock budget in seconds.")
-
-
-def resolve_n_samples(data_tag: str, n_samples: Optional[int]) -> int:
-    return n_samples if n_samples is not None else default_n_samples(data_tag)
 
 
 def _batch_size(data_item) -> int:
@@ -106,18 +88,18 @@ def run_step_training(
     model_save_path,
     n_samples: int,
     eval_every: int,
-    valid_max_batches: int,
+    val_max_batches: int,
     time_budget_s: Optional[float] = None,
     method_name: str = "comparison",
 ) -> None:
     train_loader = data.train_dataloader(shuffle_bool=True)
-    valid_loader = data.valid_dataloader(shuffle_bool=False)
+    val_loader = data.valid_dataloader(shuffle_bool=False)
     test_loader = data.test_dataloader(shuffle_bool=False)
 
     train_N = getattr(data, "train_N", "?")
     log(
         f"[{method_name}] sample-budget training: n_samples={n_samples}, eval_every={eval_every} samples, "
-        f"valid_max_batches={valid_max_batches}, train_N={train_N}",
+        f"val_max_batches={val_max_batches}, train_N={train_N}",
         filepath=str(log_file),
     )
 
@@ -165,12 +147,12 @@ def run_step_training(
             train_loss = float(np.mean(train_loss_window)) if train_loss_window else float("nan")
             train_loss_window = []
             val_loss, pearson_R, spearman_R, r2 = evaluate_loader(
-                model, valid_loader, predict_fn, loss_fn, device, max_batches=valid_max_batches,
+                model, val_loader, predict_fn, loss_fn, device, max_batches=val_max_batches,
             )
             scheduler.step()
             log(
                 f"Samples {samples_seen}/{n_samples} (step {step}): train loss {train_loss:.3f}, "
-                f"valid loss {val_loss:.3f}, P.R. {pearson_R:.3f}, S.R. {spearman_R:.3f}, R^2 {r2:.3f}.",
+                f"val loss {val_loss:.3f}, P.R. {pearson_R:.3f}, S.R. {spearman_R:.3f}, R^2 {r2:.3f}.",
                 filepath=str(log_file),
             )
             if val_loss < best_val_loss:
