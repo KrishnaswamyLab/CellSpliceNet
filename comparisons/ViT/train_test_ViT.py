@@ -12,18 +12,20 @@ setup_import_paths()
 from log_utils import log
 from seed import seed_everything
 
-from pangolin_model import Pangolin
+from vit_model import ViT
+
+PATCH_SIZE = 16
 
 
 def predict(model, data_item, device):
     coded_seq = to_coded_seq(data_item, device)
     y_true = data_item[2]["psi"].to(device)
-    y_pred = model(coded_seq)[:, :, 0]
+    y_pred = model(coded_seq)
     return y_pred, y_true
 
 
 if __name__ == "__main__":
-    cmd_parser = argparse.ArgumentParser(description="Pangolin comparison baseline.")
+    cmd_parser = argparse.ArgumentParser(description="ViT comparison baseline.")
     add_comparison_args(cmd_parser)
     cmd_args = cmd_parser.parse_known_args()[0]
     seed_everything(cmd_args.random_seed)
@@ -32,14 +34,14 @@ if __name__ == "__main__":
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
     n_samples = resolve_n_samples(cmd_args.data_tag, cmd_args.n_samples)
 
-    model = Pangolin(in_channels=2).to(device)
+    model = ViT(in_channels=2, seq_len=COMPARISON_SEQ_LEN, patch_size=PATCH_SIZE).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()
 
-    log_file, model_save_path = comparison_run_paths("Pangolin", cmd_args.data_tag, cmd_args.random_seed)
+    log_file, model_save_path = comparison_run_paths("ViT", cmd_args.data_tag, cmd_args.random_seed)
 
-    log(f"[Pangolin] Training begins (seq_len={COMPARISON_SEQ_LEN}).", filepath=str(log_file))
+    log(f"[ViT] Training begins (seq_len={COMPARISON_SEQ_LEN}).", filepath=str(log_file))
     run_step_training(
         model=model,
         data=data,
@@ -54,5 +56,5 @@ if __name__ == "__main__":
         eval_every=cmd_args.eval_every,
         valid_max_batches=cmd_args.valid_max_batches,
         time_budget_s=cmd_args.time_budget_s,
-        method_name="Pangolin",
+        method_name="ViT",
     )

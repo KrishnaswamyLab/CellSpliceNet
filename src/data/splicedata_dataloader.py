@@ -40,6 +40,19 @@ class splicedata_dataloader():
         self.annot_map = {"PAD": 0, "EXON": 1, "INTRON": 2, "FLANK": 3}
 
         self.pad_indx = 0
+        self.num_workers = getattr(hparams, "num_workers", 8)
+
+    def _dataloader_kwargs(self, shuffle_bool: bool) -> dict:
+        nw = self.num_workers
+        return dict(
+            batch_size=self.batch_size,
+            num_workers=nw,
+            persistent_workers=nw > 0,
+            pin_memory=True,
+            shuffle=shuffle_bool,
+            collate_fn=sp3_collate_fn,
+            drop_last=True,
+        )
 
     def splice_factor_prep(self, exp_csv, final_geneset, embedded_genes_list):
 
@@ -121,40 +134,13 @@ class splicedata_dataloader():
         # self.ntype_feature_dim = neuron_features_df.shape[-1] - 1
 
     def train_dataloader(self, shuffle_bool=True):
-        return DataLoader(
-            self.train_data,
-            batch_size=self.batch_size,
-            num_workers=8,
-            persistent_workers=True,
-            pin_memory=True,
-            shuffle=shuffle_bool,
-            collate_fn=sp3_collate_fn,
-            drop_last=True
-        )
+        return DataLoader(self.train_data, **self._dataloader_kwargs(shuffle_bool))
 
     def valid_dataloader(self, shuffle_bool=True):
-        return DataLoader(
-            self.valid_data,
-            batch_size=self.batch_size,
-            num_workers=8,
-            persistent_workers=True,
-            pin_memory=True,
-            shuffle=False,
-            collate_fn=sp3_collate_fn,
-            drop_last=True
-        )
+        return DataLoader(self.valid_data, **self._dataloader_kwargs(False))
 
     def test_dataloader(self, shuffle_bool=True):
-        return DataLoader(
-            self.test_data,
-            batch_size=self.batch_size,
-            num_workers=8,
-            persistent_workers=True,
-            pin_memory=True,
-            shuffle=False,
-            collate_fn=sp3_collate_fn,
-            drop_last=True
-        )
+        return DataLoader(self.test_data, **self._dataloader_kwargs(False))
 
     def setup_hparams(self, hparams):
         """

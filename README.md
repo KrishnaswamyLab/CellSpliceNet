@@ -125,63 +125,61 @@ pip install -r requirements.txt
 ## Data: Download & Configure
 
 1. Download the dataset: **[CellSpliceNet-dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)**
-2. Set the dataset root in `src/args.py`:
-   ```python
-   dataset_root = "/path/to/your/dataset"
-   ```
-   *(If the code supports CLI/environment overrides in your fork, you can use those instead; otherwise edit `args.py`.)*
+2. Place it under `<repo>/dataset/` with two bundles:
+   - `dataset/c_elegans/` (worm) -- `data_config.ini` plus encoded sequences, splits, structure, scatter coeffs
+   - `dataset/human/` (GTEx) -- same layout
+
+All training paths are read from each bundle's **`data_config.ini`** (`[files]` section). Paths use `$CONFIG_DIR` (directory of the INI) or `$ROOT` (repo root). Edit the INI to point at your files; there are no separate CLI path overrides for data files.
+
+See **[TRAINING.md](TRAINING.md)** for the full layout and path tokens.
 
 ---
 
 ## Quickstart: Train & Validate
 
-The recommended, path-agnostic trainer is the step-based `src/train_full.py`;
-`src/train.py` is the legacy epoch-based loop. The same model trains on either
-species — you select it with `--data_tag` and `--sfgenes`. See
-**[TRAINING.md](TRAINING.md)** for the full data layout, expression-encoder
-options, run-budget knobs, and outputs.
+The recommended trainer is **`src/train_full.py`** (sample/step budgeted). `src/train.py` is the legacy epoch-based loop. Pick a dataset with **`--data_tag`** only; paths come from the matching `data_config.ini`:
+
+| Dataset | `--data_tag` | Config |
+|---------|--------------|--------|
+| Worm (*C. elegans*) | `replicate` (default) | `dataset/c_elegans/data_config.ini` |
+| Human (GTEx) | `gtex` | `dataset/human/data_config.ini` |
 
 ### Run on human (GTEx) data
 
-GTEx is the **human** dataset (49 tissues). Point the trainer at your GTEx
-`data_config.ini`, train table, structure pickle, and the per-tissue scatter
-coefficients, and set `--sfgenes 493` (the number of splice-factor genes in the
-GTEx scatter `.pt` files):
-
 ```bash
 python src/train_full.py \
-    --data_tag             gtex \
-    --sfgenes              493 \
-    --config_fname         /path/to/gtex/data_config.ini \
-    --expression_data_root /path/to/gtex/train_data.csv \
-    --structure_data_root  /path/to/gtex/structure_scattering_dict.pkl \
-    --scatter_coeffs_dir   /path/to/gtex/scatter_coeffs \
-    --batch_size 4 --n_steps 200000
+    --data_tag gtex \
+    --sfgenes 493 \
+    --batch_size 4 \
+    --n_steps 200000
 ```
-
-`--data_tag gtex` sets `dataset_type=01Feb2025_gtex`; the scatter directory holds
-one `scatter_coeffs_<tissue>.pt` per tissue. On SLURM, `src/train_full.sh`
-defaults to a GTEx run (`DATA_TAG=gtex`, `SFGENES=493`) — edit the path vars at
-the top and `sbatch` it.
 
 ### Run on worm (*C. elegans*) data
 
-Worm is the original target; use a worm tag and `--sfgenes 243`:
-
 ```bash
 python src/train_full.py \
-    --data_tag             replicate \
-    --sfgenes              243 \
-    --config_fname         /path/to/worm/data_config.ini \
-    --expression_data_root /path/to/worm/train_data.csv \
-    --structure_data_root  /path/to/worm/structure_scattering_dict.pkl \
-    --scatter_coeffs_dir   /path/to/worm/scatter_coeffs \
-    --events_coordinates   /path/to/worm/events_coordinates.tsv
-# or the legacy epoch-based trainer: python src/train.py
+    --data_tag replicate \
+    --sfgenes 243 \
+    --batch_size 64 \
+    --n_steps 10000
 ```
 
-- Checkpoints/metrics are written under `<repo>/outputs/<model>/<run-key>/` (see TRAINING.md).
-- For experiment control (steps, batch size, time budget, etc.) pass flags or edit `src/args.py`.
+Checkpoints and metrics go to `<repo>/outputs/<model>/<run-key>/`. See **[TRAINING.md](TRAINING.md)** for run-budget knobs, expression encoders, and outputs.
+
+---
+
+## Comparison baselines
+
+Sequence-only baselines live under `comparisons/` (ESM2, Evo2, Pangolin, SpliceAI, SpliceBERT, SpliceFinder, SpliceTransformer, ViT). They use the same `data_config.ini` flow as `train_full.py` via `--data-tag replicate` or `--data-tag gtex`.
+
+```bash
+cd comparisons/ESM2
+python train_test_ESM2.py --data-tag replicate --random-seed 1 --batch-size 64 --num-workers 4
+```
+
+Results: `comparisons/results/<Method>/log_<data_tag>_seed-<N>.txt`. SLURM wrappers are in `bash/comparison_*.sh`.
+
+Training budget is **`--n-samples`** (total examples seen; independent of batch size). Validation runs every **`--eval-every`** samples (default 32000). All baselines truncate input to **4096 bp** (`comparisons/utils/setup.py`); ESM2 (1024) and SpliceBERT (510/1024) apply additional model-specific caps.
 
 ---
 
@@ -199,7 +197,7 @@ Download the weights and point your configuration/checkpoint loader to the file 
 - **Out of GPU memory:**
   Reduce `batch_size` and/or sequence length; consider gradient accumulation or mixed precision (AMP).
 - **Dataset path errors:**
-  Double-check `dataset_root` in `src/args.py` and that the expected subfolders/files exist.
+  Check `dataset/<species>/data_config.ini` and that `$CONFIG_DIR` paths exist on disk.
 - **Image not rendering in README:**
   Confirm the filename is exactly `CellSplceNet.png` in the repository root (case-sensitive on Linux).
 

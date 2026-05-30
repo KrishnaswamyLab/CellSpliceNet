@@ -1,4 +1,4 @@
-"""Step-based training loop for comparison baselines (mirrors train_full.py)."""
+"""Sample-budgeted training loop for comparison baselines."""
 from __future__ import annotations
 
 import argparse
@@ -17,12 +17,19 @@ from log_utils import log
 
 PredictFn = Callable[[torch.nn.Module, object, torch.device], tuple[torch.Tensor, torch.Tensor]]
 
+REF_BATCH_SIZE = 64
+DEFAULT_EVAL_EVERY_SAMPLES = REF_BATCH_SIZE * 500
 
-def default_n_steps(data_tag: str) -> int:
-    """Worm: ~20x512 batches; GTEx: same budget as train_full.py."""
+
+def default_n_samples(data_tag: str) -> int:
+    """Default sample budget (ref_steps * REF_BATCH_SIZE). Override with N_SAMPLES env."""
+    if "N_SAMPLES" in os.environ:
+        return int(os.environ["N_SAMPLES"])
     if data_tag.lower() in ("gtex", "human"):
-        return int(os.environ.get("N_STEPS", "200000"))
-    return int(os.environ.get("N_STEPS", "10240"))
+        ref_steps = int(os.environ.get("N_STEPS", "200000"))
+    else:
+        ref_steps = int(os.environ.get("N_STEPS", "10000"))
+    return ref_steps * REF_BATCH_SIZE
 
 
 def add_comparison_args(parser: argparse.ArgumentParser) -> None:
@@ -30,14 +37,19 @@ def add_comparison_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--learning-rate", default=2e-5, type=float)
     parser.add_argument("--data-tag", default="replicate", type=str)
     parser.add_argument("--random-seed", default=1, type=int)
-    parser.add_argument("--n-steps", default=10000, type=int, help="Optimizer steps.")
-    parser.add_argument("--eval-every", default=int(os.environ.get("EVAL_EVERY", "500")), type=int, help="Run capped validation every N training steps.")
+    parser.add_argument("--num-workers", default=4, type=int)
+    parser.add_argument("--n-samples", default=50000, type=int, help="Training sample budget (total examples seen; batch-size independent).")
+    parser.add_argument("--eval-every", default=int(os.environ.get("EVAL_EVERY_SAMPLES", str(DEFAULT_EVAL_EVERY_SAMPLES))), type=int, help="Run capped validation every N training samples.")
     parser.add_argument("--valid-max-batches", default=int(os.environ.get("VALID_MAX_BATCHES", "200")), type=int, help="Max validation batches per eval (train_full.py default).")
     parser.add_argument("--time-budget-s", default=None, type=float, help="Optional wallclock budget in seconds.")
 
 
-def resolve_n_steps(data_tag: str, n_steps: Optional[int]) -> int:
-    return n_steps if n_steps is not None else default_n_steps(data_tag)
+def resolve_n_samples(data_tag: str, n_samples: Optional[int]) -> int:
+    return n_samples if n_samples is not None else default_n_samples(data_tag)
+
+
+def _batch_size(data_item) -> int:
+    return int(data_item[2]["psi"].shape[0])
 
 
 def metrics_from_arrays(y_true_arr: np.ndarray, y_pred_arr: np.ndarray) -> tuple[float, float, float]:
@@ -92,7 +104,7 @@ def run_step_training(
     predict_fn: PredictFn,
     log_file,
     model_save_path,
-    n_steps: int,
+    n_samples: int,
     eval_every: int,
     valid_max_batches: int,
     time_budget_s: Optional[float] = None,
@@ -104,24 +116,28 @@ def run_step_training(
 
     train_N = getattr(data, "train_N", "?")
     log(
-        f"[{method_name}] step-based training: n_steps={n_steps}, eval_every={eval_every}, "
+        f"[{method_name}] sample-budget training: n_samples={n_samples}, eval_every={eval_every} samples, "
         f"valid_max_batches={valid_max_batches}, train_N={train_N}",
         filepath=str(log_file),
     )
 
     best_val_loss = np.inf
     step = 0
+    samples_seen = 0
+    samples_at_last_eval = 0
     train_loss_window: list[float] = []
     train_iter = iter(train_loader)
     t_start = time.time()
-    pbar = tqdm(total=n_steps, desc=f"{method_name} steps")
+    pbar = tqdm(total=n_samples, desc=f"{method_name} samples")
 
-    while step < n_steps:
+    while samples_seen < n_samples:
         try:
             data_item = next(train_iter)
         except StopIteration:
             train_iter = iter(train_loader)
             data_item = next(train_iter)
+
+        batch_n = _batch_size(data_item)
 
         model.train()
         y_pred, y_true = predict_fn(model, data_item, device)
@@ -133,14 +149,19 @@ def run_step_training(
         optimizer.step()
         train_loss_window.append(loss.item())
         step += 1
-        pbar.update(1)
+        samples_seen += batch_n
+        pbar.update(batch_n)
 
         if time_budget_s is not None and (time.time() - t_start) >= time_budget_s:
-            log(f"[{method_name}] stopping: time budget {time_budget_s:.0f}s reached at step {step}.",
-                filepath=str(log_file))
+            log(
+                f"[{method_name}] stopping: time budget {time_budget_s:.0f}s reached "
+                f"at step {step}, samples {samples_seen}.",
+                filepath=str(log_file),
+            )
             break
 
-        if step % eval_every == 0:
+        if samples_seen - samples_at_last_eval >= eval_every:
+            samples_at_last_eval = samples_seen
             train_loss = float(np.mean(train_loss_window)) if train_loss_window else float("nan")
             train_loss_window = []
             val_loss, pearson_R, spearman_R, r2 = evaluate_loader(
@@ -148,7 +169,7 @@ def run_step_training(
             )
             scheduler.step()
             log(
-                f"Step {step}/{n_steps}: train loss {train_loss:.3f}, "
+                f"Samples {samples_seen}/{n_samples} (step {step}): train loss {train_loss:.3f}, "
                 f"valid loss {val_loss:.3f}, P.R. {pearson_R:.3f}, S.R. {spearman_R:.3f}, R^2 {r2:.3f}.",
                 filepath=str(log_file),
             )
