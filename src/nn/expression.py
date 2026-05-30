@@ -140,12 +140,7 @@ class GraphExpressionModality(nn.Module, _ExpressionGlobAttnMixin):
         self.coeff_dim = coeff_dim
         self.expression_data_root = expression_data_root
         self.save_output_hook = save_output_hook
-
-        if scatter_coeffs_dir:
-            self.scatter_dir = Path(scatter_coeffs_dir)
-        else:
-            p = Path(expression_data_root)
-            self.scatter_dir = p.parent / "scatter_coeffs_gtex" if p.suffix == ".tsv" else p
+        self.scatter_dir = Path(scatter_coeffs_dir)
 
         self.expression_dim = int(exp_dim) * 11
         self.to_expression_embedding = nn.Sequential(

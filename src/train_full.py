@@ -5,18 +5,16 @@ impractically large, so training is budgeted in optimizer steps and wallclock
 time rather than epochs. The legacy epoch-based loop lives in ``train.py`` and
 is kept only for the small worm dataset / reproducibility.
 
-This script is path-agnostic: every data path comes from CLI flags (see
-``args.py``), so a colleague can clone the repo and point it at data anywhere:
+This script reads all data paths from ``data_config.ini`` (see ``utils/paths.py``).
+Pick a dataset with ``--config_fname`` or ``--data_tag`` (gtex/human vs worm):
 
     python src/train_full.py \
-        --config_fname        /path/to/data_config.ini \
-        --expression_data_root /path/to/train_data.csv \
-        --structure_data_root /path/to/structure_scattering_dict.pkl \
-        --scatter_coeffs_dir  /path/to/scatter_coeffs \
+        --data_tag gtex \
+        --config_fname dataset/human/data_config.ini \
         --sfgenes 493 --batch_size 4 --n_steps 200000
 
-With no flags it falls back to the defaults in ``args.py`` (data under
-``<repo>/dataset/``). Outputs go to ``<repo>/outputs/<model>/<key><type>/``.
+With no flags it falls back to the defaults in ``args.py`` (worm config under
+``dataset/c_elegans/``). Outputs go to ``<repo>/outputs/<model>/<key><type>/``.
 
 Run-budget knobs are CLI flags below; each also accepts an env-var fallback so
 existing sbatch wrappers that export N_STEPS / EVAL_EVERY / etc. keep working.

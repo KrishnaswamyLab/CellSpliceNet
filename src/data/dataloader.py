@@ -27,9 +27,9 @@ class dataloader(Dataset):
             if not self.events_coordinates_path:
                 raise ValueError(
                     "events_coordinates is required for this dataset_type "
-                    f"({self.dataset_type!r}) but none was provided. Add it under "
-                    "[processed_files] in data_config.ini, or pass "
-                    "--events_coordinates <path>. (Not needed for neuron_replicate data.)"
+                    f"({self.dataset_type!r}) but none was provided. Add "
+                    "[files] events_coordinates to data_config.ini. "
+                    "(Not needed for neuron_replicate data.)"
                 )
             self.events_coordinates = pd.read_csv(self.events_coordinates_path, sep=None, engine='python')
             # O(1) lookup by event_id (one row per event). Avoids O(N) pandas
