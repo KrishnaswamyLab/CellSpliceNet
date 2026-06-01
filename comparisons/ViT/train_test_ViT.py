@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
-from setup import COMPARISON_SEQ_LEN, comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
+from setup import comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
 from training import add_comparison_args, run_step_training
 
 setup_import_paths()
@@ -33,14 +33,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
 
-    model = ViT(in_channels=2, seq_len=COMPARISON_SEQ_LEN, patch_size=PATCH_SIZE).to(device)
+    model = ViT(in_channels=2, seq_len=4096, patch_size=PATCH_SIZE).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()
 
     log_file, model_save_path = comparison_run_paths("ViT", cmd_args.data_tag, cmd_args.random_seed)
 
-    log(f"[ViT] Training begins (seq_len={COMPARISON_SEQ_LEN}).", filepath=str(log_file))
+    log(f"[ViT] Training begins.", filepath=str(log_file))
     run_step_training(
         model=model,
         data=data,

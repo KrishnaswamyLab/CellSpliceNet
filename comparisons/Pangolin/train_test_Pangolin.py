@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
-from setup import COMPARISON_SEQ_LEN, comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
+from setup import comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
 from training import add_comparison_args, run_step_training
 
 setup_import_paths()
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     log_file, model_save_path = comparison_run_paths("Pangolin", cmd_args.data_tag, cmd_args.random_seed)
 
-    log(f"[Pangolin] Training begins (seq_len={COMPARISON_SEQ_LEN}).", filepath=str(log_file))
+    log(f"[Pangolin] Training begins.", filepath=str(log_file))
     run_step_training(
         model=model,
         data=data,

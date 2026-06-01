@@ -10,6 +10,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 COMPARISONS_UTILS = REPO_ROOT / "comparisons" / "utils"
 SRC_ROOT = REPO_ROOT / "src"
 
+# Dataloader encodings (see src/data/splicedata_dataloader.py).
+PAD_INDEX = 0
+ANNOTATION_EXON = 1
+
 
 def setup_import_paths() -> None:
     for path in (COMPARISONS_UTILS, SRC_ROOT):
@@ -33,30 +37,43 @@ def comparison_run_paths(model_name: str, data_tag: str, random_seed: int) -> tu
     return log_file, model_save_path
 
 
-COMPARISON_SEQ_LEN = 4096
-
-
-def comparison_seq_len(_data_tag: str = "replicate") -> int:
-    """Shared sequence window for comparison baselines (fits ~80GB GPU at batch 64)."""
-    return COMPARISON_SEQ_LEN
-
-
 def truncate_sequence_batch(
     sequence: torch.Tensor,
     annotation: torch.Tensor,
-    max_len: int | None = None,
+    max_len: int = 4096,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    max_len = max_len or COMPARISON_SEQ_LEN
-    return sequence[..., :max_len], annotation[..., :max_len]
+    """Crop a window of length ``max_len`` centered on the exon of interest.
+
+    The gene sequence is left-aligned, so the exon (``annotation == EXON``) can sit
+    anywhere; a naive front-truncation frequently drops it, which silently starves
+    every baseline of the signal it needs. Center the window on the exon per sample,
+    falling back to the non-pad content center for events with no exon in range. The
+    output length matches the previous front-truncation (``min(L, max_len)``).
+    """
+    seq_len = sequence.shape[-1]
+    if seq_len <= max_len:
+        return sequence, annotation
+
+    positions = torch.arange(seq_len, dtype=torch.float32)
+    exon = annotation == ANNOTATION_EXON
+    content = sequence != PAD_INDEX
+    exon_count = exon.sum(dim=-1)
+    exon_center = (positions * exon).sum(dim=-1) / exon_count.clamp(min=1)
+    content_center = (positions * content).sum(dim=-1) / content.sum(dim=-1).clamp(min=1)
+    center = torch.where(exon_count > 0, exon_center, content_center)
+
+    start = (center.round().long() - max_len // 2).clamp(0, seq_len - max_len)
+    idx = start.unsqueeze(-1) + torch.arange(max_len)
+    return torch.gather(sequence, -1, idx), torch.gather(annotation, -1, idx)
 
 
-def comparison_batch_inputs(data_item, device: torch.device, max_len: int | None = None):
+def comparison_batch_inputs(data_item, device: torch.device, max_len: int = 4096):
     sequence, annotation = data_item[1]
     sequence, annotation = truncate_sequence_batch(sequence, annotation, max_len=max_len)
     return sequence.to(device), annotation.to(device)
 
 
-def to_coded_seq(data_item, device: torch.device, max_len: int | None = None) -> torch.Tensor:
+def to_coded_seq(data_item, device: torch.device, max_len: int = 4096) -> torch.Tensor:
     sequence, annotation = comparison_batch_inputs(data_item, device, max_len=max_len)
     return torch.hstack((sequence[:, None, :], annotation[:, None, :])).float()
 

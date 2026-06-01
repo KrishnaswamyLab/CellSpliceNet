@@ -4,10 +4,9 @@ from pathlib import Path
 
 import torch
 from spliceai_pytorch import SpliceAI
-from spliceai_pytorch.spliceai_pytorch import SpliceAI_10k
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
-from setup import COMPARISON_SEQ_LEN, comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
+from setup import ANNOTATION_EXON, comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
 from training import add_comparison_args, run_step_training
 
 setup_import_paths()
@@ -15,28 +14,43 @@ from log_utils import log
 from seed import seed_everything
 
 SPLICEAI_MODEL = "10k"
-SPLICEAI_FLANK = 5000
-SPLICEAI_CENTER = SpliceAI_10k.S
-SPLICEAI_INPUT_LEN = SPLICEAI_FLANK + SPLICEAI_CENTER + SPLICEAI_FLANK
+# SpliceAI_10k.forward hardcodes `return x[..., 5000:5000 + 5000]`: it only emits
+# predictions for input positions [5000:10000], a fixed 5000-wide band.
+SPLICEAI_PRED_START = 5000
+SPLICEAI_PRED_LEN = 5000
+SPLICEAI_INPUT_LEN = SPLICEAI_PRED_START + SPLICEAI_PRED_LEN  # 10000
 
 
 def prepare_spliceai_input(coded_seq: torch.Tensor) -> torch.Tensor:
-    """Pad/truncate to SpliceAI-10k layout: 5k flank | 10k center | 5k flank."""
-    _, _, seq_len = coded_seq.shape
-    if seq_len > SPLICEAI_CENTER:
-        start = (seq_len - SPLICEAI_CENTER) // 2
-        coded_seq = coded_seq[..., start : start + SPLICEAI_CENTER]
-        seq_len = SPLICEAI_CENTER
-    pad_center = SPLICEAI_CENTER - seq_len
-    pad_left = SPLICEAI_FLANK + pad_center // 2
-    pad_right = SPLICEAI_FLANK + (pad_center - pad_center // 2)
+    """Center the (exon-centered) window inside SpliceAI's [5000:10000] output band.
+
+    The model only predicts input positions 5000-9999, so the real sequence must
+    land inside that band. Place the window center at input 7500 and pad to the
+    10000-long input the model expects; for the 4096 window this keeps the whole
+    sequence within the predicted band.
+    """
+    _, _, w = coded_seq.shape
+    pred_center = SPLICEAI_PRED_START + SPLICEAI_PRED_LEN // 2  # 7500
+    pad_left = min(max(pred_center - w // 2, 0), max(SPLICEAI_INPUT_LEN - w, 0))
+    pad_right = max(SPLICEAI_INPUT_LEN - w - pad_left, 0)
     return torch.nn.functional.pad(coded_seq, (pad_left, pad_right))
 
 
 def predict(model, data_item, device):
-    coded_seq = prepare_spliceai_input(to_coded_seq(data_item, device))
+    coded_seq = to_coded_seq(data_item, device)  # [B, 2, W], exon-centered
+    padded = prepare_spliceai_input(coded_seq)    # [B, 2, 10000]
+    out = model(padded)[..., 0]                   # [B, 5000] over input[5000:10000]
+
+    annotation = padded[:, 1, SPLICEAI_PRED_START : SPLICEAI_PRED_START + SPLICEAI_PRED_LEN]
+    exon_mask = (annotation == ANNOTATION_EXON).type_as(out)  # [B, 5000]
+    denom = exon_mask.sum(dim=1, keepdim=True)
+    y_pred = (out * exon_mask).sum(dim=1, keepdim=True) / denom.clamp(min=1.0)
+    no_exon = denom.squeeze(1) == 0
+    if no_exon.any():
+        y_pred = y_pred.clone()
+        y_pred[no_exon] = out[no_exon].mean(dim=1, keepdim=True)
+
     y_true = data_item[2]["psi"].to(device)
-    y_pred = model(coded_seq)[:, 0, :]
     return y_pred, y_true
 
 
@@ -73,7 +87,7 @@ if __name__ == "__main__":
     log_file, model_save_path = comparison_run_paths("SpliceAI", cmd_args.data_tag, cmd_args.random_seed)
 
     log(
-        f"[SpliceAI] Training begins (window={COMPARISON_SEQ_LEN}, model_input={SPLICEAI_INPUT_LEN}).",
+        f"[SpliceAI] Training begins.",
         filepath=str(log_file),
     )
     run_step_training(

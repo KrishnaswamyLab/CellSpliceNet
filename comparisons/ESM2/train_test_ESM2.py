@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
-from setup import COMPARISON_SEQ_LEN, comparison_batch_inputs, comparison_run_paths, load_splicedata, setup_import_paths
+from setup import comparison_batch_inputs, comparison_run_paths, load_splicedata, setup_import_paths
 from training import add_comparison_args, run_step_training
 
 setup_import_paths()
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     log_file, model_save_path = comparison_run_paths("ESM2", cmd_args.data_tag, cmd_args.random_seed)
 
     log(
-        f"[ESM2] Training begins (input truncate {COMPARISON_SEQ_LEN}, model max 1024).",
+        f"[ESM2] Training begins (exon-centered crop, model max {model.max_length}, annotation-aware).",
         filepath=str(log_file),
     )
     run_step_training(
