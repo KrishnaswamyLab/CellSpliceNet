@@ -31,7 +31,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
 
-    model = SpliceFinder(in_channels=2, seq_len=4096).to(device)
+    model = SpliceFinder(in_channels=2).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()

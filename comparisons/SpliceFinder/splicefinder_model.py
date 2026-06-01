@@ -15,8 +15,6 @@ class SpliceFinder(nn.Module):
         self.model = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=num_features, kernel_size=9, stride=1, padding=4),
             nn.ReLU(),
-            nn.Conv1d(in_channels=num_features, out_channels=num_features, kernel_size=9, stride=1, padding=4),
-            nn.ReLU(),
             nn.Flatten(),
             nn.Linear(seq_len * num_features, 100),
             nn.Dropout(p=0.3),
