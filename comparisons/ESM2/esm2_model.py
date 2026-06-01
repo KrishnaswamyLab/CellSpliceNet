@@ -24,18 +24,16 @@ NUM_ANNOTATION_TOKENS = 4
 class ESM2(nn.Module):
     def __init__(
         self,
-        model_name: str = "facebook/esm2_t12_35M_UR50D",
-        max_length: int = 1024,
+        model_name: str = "facebook/esm2_t6_8M_UR50D",
+        context: int = 512,
     ):
         super().__init__()
-        self.max_length = max_length
+        self.context = context
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.esm = AutoModel.from_pretrained(model_name)
-        # token_dropout reads input_ids; we feed inputs_embeds, so reproduce its
-        # constant rescale manually and disable the module branch.
         self._token_dropout_scale = 1.0
         if getattr(self.esm.embeddings, "token_dropout", False):
-            self._token_dropout_scale = 1.0 - 0.15 * 0.8
+            self._token_dropout_scale = 0.3
             self.esm.embeddings.token_dropout = False
 
         hidden = self.esm.config.hidden_size
@@ -56,7 +54,7 @@ class ESM2(nn.Module):
         """Center-crop on the exon, retokenize to ESM ids, align annotation/mask."""
         device = sequence.device
         batch_size, seq_len = sequence.shape
-        crop = self.max_length - 2  # leave room for [CLS] and [EOS]
+        crop = self.context - 2  # leave room for [CLS] and [EOS]
         cls_id = self.tokenizer.cls_token_id
         eos_id = self.tokenizer.eos_token_id
         pad_id = self.tokenizer.pad_token_id
@@ -64,9 +62,9 @@ class ESM2(nn.Module):
         sequence = sequence.long()
         annotation = annotation.long()
 
-        tokens = torch.full((batch_size, self.max_length), pad_id, dtype=torch.long, device=device)
-        annotations = torch.zeros((batch_size, self.max_length), dtype=torch.long, device=device)
-        attention_mask = torch.zeros((batch_size, self.max_length), dtype=torch.long, device=device)
+        tokens = torch.full((batch_size, self.context), pad_id, dtype=torch.long, device=device)
+        annotations = torch.zeros((batch_size, self.context), dtype=torch.long, device=device)
+        attention_mask = torch.zeros((batch_size, self.context), dtype=torch.long, device=device)
 
         for i in range(batch_size):
             seq_i = sequence[i]

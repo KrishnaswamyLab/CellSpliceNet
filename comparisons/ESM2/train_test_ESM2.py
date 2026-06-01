@@ -39,7 +39,7 @@ if __name__ == "__main__":
     log_file, model_save_path = comparison_run_paths("ESM2", cmd_args.data_tag, cmd_args.random_seed)
 
     log(
-        f"[ESM2] Training begins (exon-centered crop, model max {model.max_length}, annotation-aware).",
+        f"[ESM2] Training begins.",
         filepath=str(log_file),
     )
     run_step_training(
