@@ -12,41 +12,34 @@ setup_import_paths()
 from log_utils import log
 from seed import seed_everything
 
-from evo2_model import DEFAULT_MODEL, Evo2ForPSI
+from alphagenome_model import SEQUENCE_LENGTH, AlphaGenomeForPSI
 
 
 def predict(model, data_item, device):
-    sequence, annotation = comparison_batch_inputs(data_item, device)
+    sequence, annotation = comparison_batch_inputs(data_item, device, max_len=SEQUENCE_LENGTH)
     y_true = data_item[2]["psi"].to(device)
-    y_pred = model(sequence=sequence, annotation=annotation)
-    return y_pred, y_true
+    logits = model(sequence=sequence, annotation=annotation)["logits"]
+    return logits, y_true
 
 
 if __name__ == "__main__":
-    cmd_parser = argparse.ArgumentParser(description="Evo2 comparison baseline (linear probing).")
+    cmd_parser = argparse.ArgumentParser(description="AlphaGenome comparison baseline (frozen trunk, linear probing).")
     add_comparison_args(cmd_parser)
     cmd_args = cmd_parser.parse_known_args()[0]
     seed_everything(cmd_args.random_seed)
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("Evo2 baseline requires CUDA. Submit via bash/comparison_Evo2.sh on a GPU node.")
-
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
 
-    model = Evo2ForPSI(model_name=DEFAULT_MODEL).to(device)
-    trainable_params = list(model.regression_head.parameters()) + list(
-        model.annotation_embedding.parameters()
-    )
-    optimizer = torch.optim.AdamW(trainable_params, lr=cmd_args.learning_rate)
+    model = AlphaGenomeForPSI().to(device)
+    optimizer = torch.optim.AdamW(model.regression_head.parameters(), lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()
 
-    log_file, model_save_path = comparison_run_paths("Evo2", cmd_args.data_tag, cmd_args.random_seed)
+    log_file, model_save_path = comparison_run_paths("AlphaGenome", cmd_args.data_tag, cmd_args.random_seed)
 
     log(
-        f"[Evo2] Training begins (model={DEFAULT_MODEL}, "
-        f"embed_layer={model.embed_layer}).",
+        f"[AlphaGenome] Training begins.",
         filepath=str(log_file),
     )
     run_step_training(
@@ -63,5 +56,5 @@ if __name__ == "__main__":
         eval_every=cmd_args.eval_every,
         val_max_batches=cmd_args.val_max_batches,
         time_budget_s=cmd_args.time_budget_s,
-        method_name="Evo2",
+        method_name="AlphaGenome",
     )
