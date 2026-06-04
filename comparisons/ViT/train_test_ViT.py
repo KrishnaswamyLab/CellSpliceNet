@@ -14,8 +14,6 @@ from seed import seed_everything
 
 from vit_model import ViT
 
-PATCH_SIZE = 16
-
 
 def predict(model, data_item, device):
     coded_seq = to_coded_seq(data_item, device)
@@ -33,7 +31,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
 
-    model = ViT(in_channels=2, seq_len=4096, patch_size=PATCH_SIZE).to(device)
+    model = ViT(in_channels=2).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()

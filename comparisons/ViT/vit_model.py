@@ -12,10 +12,17 @@ class PatchEmbed1D(nn.Module):
         super().__init__()
         if seq_len % patch_size != 0:
             raise ValueError(f"seq_len ({seq_len}) must be divisible by patch_size ({patch_size}).")
+        self.seq_len = seq_len
+        self.patch_size = patch_size
         self.num_patches = seq_len // patch_size
         self.proj = nn.Conv1d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.shape[-1] != self.seq_len:
+            raise ValueError(
+                f"expected input length {self.seq_len}, got {x.shape[-1]}; "
+                f"crop/pad upstream or set seq_len to match the data window."
+            )
         x = self.proj(x)
         return x.transpose(1, 2)
 
@@ -61,6 +68,12 @@ class ViT(nn.Module):
         dropout: float = 0.1,
     ):
         super().__init__()
+        if seq_len % patch_size != 0:
+            raise ValueError(f"seq_len ({seq_len}) must be divisible by patch_size ({patch_size}).")
+        if embed_dim % num_heads != 0:
+            raise ValueError(
+                f"embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})."
+            )
         self.seq_len = seq_len
         self.patch_embed = PatchEmbed1D(in_channels, seq_len, patch_size, embed_dim)
         num_patches = self.patch_embed.num_patches
@@ -80,9 +93,19 @@ class ViT(nn.Module):
         nn.init.trunc_normal_(self.head.weight, std=0.02)
         nn.init.zeros_(self.head.bias)
 
+    def _fit_seq_len(self, x: torch.Tensor) -> torch.Tensor:
+        """Crop or right-pad [B, C, L] to [B, C, seq_len] so patch and pos_embed counts match."""
+        length = x.shape[-1]
+        if length == self.seq_len:
+            return x
+        if length > self.seq_len:
+            return x[:, :, : self.seq_len]
+        pad = self.seq_len - length
+        return torch.nn.functional.pad(x, (0, pad))
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x[:, :, : self.seq_len]
         b = x.shape[0]
+        x = self._fit_seq_len(x)
         x = self.patch_embed(x)
         cls_tokens = self.cls_token.expand(b, -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
