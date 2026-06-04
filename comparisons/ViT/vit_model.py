@@ -60,12 +60,12 @@ class ViT(nn.Module):
         self,
         in_channels: int = 2,
         seq_len: int = 4096,
-        patch_size: int = 16,
+        patch_size: int = 8,
         embed_dim: int = 256,
         depth: int = 6,
         num_heads: int = 8,
         mlp_ratio: float = 4.0,
-        dropout: float = 0.1,
+        dropout: float = 0.0,
     ):
         super().__init__()
         if seq_len % patch_size != 0:
