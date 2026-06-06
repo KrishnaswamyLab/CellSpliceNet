@@ -25,7 +25,7 @@ def add_comparison_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--random-seed", default=1, type=int)
     parser.add_argument("--num-workers", default=4, type=int)
     parser.add_argument("--n-samples", default=20000, type=int, help="Training sample budget (total examples seen; batch-size independent).")
-    parser.add_argument("--eval-every", default=40000, type=int, help="Run capped validation every N training samples.")
+    parser.add_argument("--eval-every", default=4000, type=int, help="Run capped validation every N training samples.")
     parser.add_argument("--val-max-batches", default=200, type=int, help="Max validation batches per eval.")
     parser.add_argument("--time-budget-s", default=None, type=float, help="Optional wallclock budget in seconds.")
 
