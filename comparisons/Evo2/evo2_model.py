@@ -1,6 +1,9 @@
-"""Evo 2 baseline for PSI: frozen pretrained backbone + trainable head/adapters.
+"""Evo 2 baseline for PSI: optional pretrained backbone + trainable head/adapters.
 
 Uses ``evo2_7b_base`` (8K context, bfloat16) — no FP8 or Transformer Engine required.
+With ``--use-pretrained``, the Evo2 checkpoint is loaded and the backbone stays frozen
+(linear probing). Otherwise the architecture is randomly initialized and trained
+end-to-end (requires evo2 + vortex).
 Design aligned with ``comparisons/ESM2/esm2_model.py`` where it matters for this task:
 exon-centered cropping, annotation injection at the input, and an MLP regression head.
 Evo2 is causal (not bidirectional), so we pool the *last* exon token instead of mean-pooling.
@@ -15,10 +18,16 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
-from evo2 import Evo2
 from vortex import logging as vortex_logging
 from vortex.model.attention import CrossAttention, SelfAttention
 from vortex.model.model import AttentionBlock
+
+try:
+    import transformer_engine  # noqa: F401
+
+    HAS_TE = True
+except ImportError:
+    HAS_TE = False
 
 
 def _disable_vortex_activations_log_file() -> None:
@@ -85,8 +94,44 @@ def _default_embed_layer(backbone) -> str:
     return f"blocks.{n_blocks - 1}"
 
 
+def _load_evo2_backbone(model_name: str, use_pretrained: bool):
+    """Return (CharLevelTokenizer, StripedHyena backbone)."""
+    if use_pretrained:
+        from evo2 import Evo2
+
+        wrapper = Evo2(model_name)
+        return wrapper.tokenizer, wrapper.model
+
+    import pkgutil
+
+    import yaml
+    from evo2.utils import CONFIG_MAP
+    from vortex.model.model import StripedHyena
+    from vortex.model.tokenizer import CharLevelTokenizer
+    from vortex.model.utils import dotdict
+
+    if model_name not in CONFIG_MAP:
+        raise ValueError(f"Unknown Evo2 model_name {model_name!r}.")
+    config_path = CONFIG_MAP[model_name]
+    config = yaml.safe_load(pkgutil.get_data("evo2.models", config_path))
+    config = dotdict(config)
+    if config.get("use_fp8_input_projections", False) and not HAS_TE:
+        if "7b" in model_name:
+            warnings.warn(
+                "Transformer Engine not installed. "
+                "Falling back to bf16 projections (use_fp8_input_projections=False). ",
+                stacklevel=2,
+            )
+            config.use_fp8_input_projections = False
+        else:
+            raise ImportError(
+                f"Model '{model_name}' requires FP8 via Transformer Engine, which is not installed."
+            )
+    return CharLevelTokenizer(512), StripedHyena(config)
+
+
 class Evo2ForPSI(nn.Module):
-    """Frozen Evo 2 encoder with trainable annotation adapter + PSI head."""
+    """Evo 2 encoder with trainable annotation adapter + PSI head."""
 
     def __init__(
         self,
@@ -94,6 +139,7 @@ class Evo2ForPSI(nn.Module):
         context: int = 1024,
         embed_layer: Optional[str] = None,
         max_length: Optional[int] = None,
+        use_pretrained: bool = False,
     ):
         super().__init__()
         if not torch.cuda.is_available():
@@ -107,9 +153,8 @@ class Evo2ForPSI(nn.Module):
             context = max_length
 
         self.context = context
-        self._evo2 = Evo2(model_name)
-        self.tokenizer = self._evo2.tokenizer
-        self.backbone = self._evo2.model
+        self.freeze_backbone = use_pretrained
+        self.tokenizer, self.backbone = _load_evo2_backbone(model_name, use_pretrained)
         if not _vortex_flash_attn_available():
             warnings.warn(
                 "vortex FlashAttention kernels are unavailable on this GPU; "
@@ -117,9 +162,10 @@ class Evo2ForPSI(nn.Module):
                 stacklevel=2,
             )
             _use_pytorch_attention(self.backbone)
-        for param in self.backbone.parameters():
-            param.requires_grad = False
-        self.backbone.eval()
+        if self.freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+            self.backbone.eval()
         hidden_size = self.backbone.config.hidden_size
         self.embed_layer = embed_layer or _default_embed_layer(self.backbone)
 
@@ -249,23 +295,29 @@ class Evo2ForPSI(nn.Module):
         return self.regression_head(pooled.float())
 
     def state_dict(self, *args, **kwargs):
-        return {
-            "regression_head": self.regression_head.state_dict(),
-            "annotation_embedding": self.annotation_embedding.state_dict(),
-        }
+        if self.freeze_backbone:
+            return {
+                "regression_head": self.regression_head.state_dict(),
+                "annotation_embedding": self.annotation_embedding.state_dict(),
+            }
+        return super().state_dict(*args, **kwargs)
 
     def load_state_dict(self, state_dict, strict: bool = True):
-        if "head" in state_dict and "regression_head" not in state_dict:
-            state_dict = {
-                "regression_head": state_dict["head"],
-                "annotation_embedding": state_dict["annotation_embedding"],
-            }
-        self.regression_head.load_state_dict(state_dict["regression_head"], strict=strict)
-        self.annotation_embedding.load_state_dict(
-            state_dict["annotation_embedding"], strict=strict
-        )
+        if self.freeze_backbone and "regression_head" in state_dict:
+            if "head" in state_dict and "regression_head" not in state_dict:
+                state_dict = {
+                    "regression_head": state_dict["head"],
+                    "annotation_embedding": state_dict["annotation_embedding"],
+                }
+            self.regression_head.load_state_dict(state_dict["regression_head"], strict=strict)
+            self.annotation_embedding.load_state_dict(
+                state_dict["annotation_embedding"], strict=strict
+            )
+            return
+        super().load_state_dict(state_dict, strict=strict)
 
     def train(self, mode: bool = True):
         super().train(mode)
-        self.backbone.eval()
+        if self.freeze_backbone:
+            self.backbone.eval()
         return self

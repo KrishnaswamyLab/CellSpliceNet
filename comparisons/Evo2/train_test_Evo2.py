@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
-from setup import comparison_batch_inputs, comparison_run_paths, load_splicedata, setup_import_paths
+from setup import add_use_pretrained_arg, comparison_batch_inputs, comparison_run_paths, load_splicedata, setup_import_paths
 from training import add_comparison_args, run_step_training
 
 setup_import_paths()
@@ -23,8 +23,9 @@ def predict(model, data_item, device):
 
 
 if __name__ == "__main__":
-    cmd_parser = argparse.ArgumentParser(description="Evo2 comparison baseline (linear probing).")
+    cmd_parser = argparse.ArgumentParser(description="Evo2 comparison baseline.")
     add_comparison_args(cmd_parser)
+    add_use_pretrained_arg(cmd_parser)
     cmd_args = cmd_parser.parse_known_args()[0]
     seed_everything(cmd_args.random_seed)
 
@@ -34,10 +35,13 @@ if __name__ == "__main__":
     device = torch.device("cuda")
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
 
-    model = Evo2ForPSI(model_name=DEFAULT_MODEL).to(device)
-    trainable_params = list(model.regression_head.parameters()) + list(
-        model.annotation_embedding.parameters()
-    )
+    model = Evo2ForPSI(model_name=DEFAULT_MODEL, use_pretrained=cmd_args.use_pretrained).to(device)
+    if cmd_args.use_pretrained:
+        trainable_params = list(model.regression_head.parameters()) + list(
+            model.annotation_embedding.parameters()
+        )
+    else:
+        trainable_params = model.parameters()
     optimizer = torch.optim.AdamW(trainable_params, lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()
@@ -45,7 +49,7 @@ if __name__ == "__main__":
     log_file, model_save_path = comparison_run_paths("Evo2", cmd_args.data_tag, cmd_args.random_seed)
 
     log(
-        f"[Evo2] Training begins (model={DEFAULT_MODEL}, "
+        f"[Evo2] Training begins (model={DEFAULT_MODEL}, use_pretrained={cmd_args.use_pretrained}, "
         f"embed_layer={model.embed_layer}).",
         filepath=str(log_file),
     )

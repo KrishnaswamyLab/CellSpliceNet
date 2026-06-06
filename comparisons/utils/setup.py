@@ -1,6 +1,7 @@
 """Shared import and path setup for comparison train_test scripts."""
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -35,6 +36,14 @@ def comparison_run_paths(model_name: str, data_tag: str, random_seed: int) -> tu
     log_file = out / f"log_{tag}_seed-{random_seed}.txt"
     model_save_path = out / f"model_{tag}_seed-{random_seed}.pt"
     return log_file, model_save_path
+
+
+def add_use_pretrained_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--use-pretrained",
+        action="store_true",
+        help="Load publicly available pretrained backbone weights before fine-tuning (default: random initialization).",
+    )
 
 
 def truncate_sequence_batch(

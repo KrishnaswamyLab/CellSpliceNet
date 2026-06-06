@@ -5,7 +5,7 @@ from typing import List
 
 import torch
 import torch.nn as nn
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 
 RNA_MAP = {
     0: "N",
@@ -43,6 +43,7 @@ class SpliceBert(nn.Module):
         data_tag: str = "replicate",
         vocab_size_annotation: int = 4,
         max_seq_len: int | None = None,
+        use_pretrained: bool = False,
     ):
         super().__init__()
         self.device = device
@@ -51,11 +52,17 @@ class SpliceBert(nn.Module):
         model_path = Path(model_path) if model_path is not None else default_pretrained_path(data_tag)
 
         self.tokenizer = AutoTokenizer.from_pretrained(str(model_path))
-        self.bertmodel = AutoModelForSequenceClassification.from_pretrained(
-            str(model_path),
-            problem_type="regression",
-            num_labels=1,
-        )
+        if use_pretrained:
+            self.bertmodel = AutoModelForSequenceClassification.from_pretrained(
+                str(model_path),
+                problem_type="regression",
+                num_labels=1,
+            )
+        else:
+            config = AutoConfig.from_pretrained(str(model_path))
+            config.num_labels = 1
+            config.problem_type = "regression"
+            self.bertmodel = AutoModelForSequenceClassification.from_config(config)
         # Keep first 3 encoder layers (original comparison design).
         self.bertmodel.bert.encoder.layer = self.bertmodel.bert.encoder.layer[:3]
         self.bertmodel.to(self.device)
@@ -105,22 +112,8 @@ class SpliceBert(nn.Module):
         else:
             embedding_joint = embedding_sequence
 
-        extended_attention_mask = self.bertmodel.bert.get_extended_attention_mask(attention_mask, input_shape)
-        head_mask = self.bertmodel.bert.get_head_mask(None, self.bertmodel.bert.config.num_hidden_layers)
-
-        encoder_outputs = self.bertmodel.bert.encoder(
-            embedding_joint,
-            attention_mask=extended_attention_mask,
-            head_mask=head_mask,
-            encoder_hidden_states=None,
-            encoder_attention_mask=None,
-            past_key_values=None,
-            use_cache=None,
-            output_attentions=None,
-            output_hidden_states=None,
-            return_dict=None,
+        outputs = self.bertmodel(
+            inputs_embeds=embedding_joint,
+            attention_mask=attention_mask,
         )
-
-        sequence_output = encoder_outputs[0]
-        pooled = self.bertmodel.bert.pooler(sequence_output)
-        return self.bertmodel.classifier(pooled)
+        return outputs.logits

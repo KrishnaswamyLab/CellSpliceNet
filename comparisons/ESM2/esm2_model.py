@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from transformers import AutoModel
+from transformers import AutoConfig, AutoModel
 
 # Dataloader encodings (see src/data/splicedata_dataloader.py).
 #   sequence vocab : {PAD:0, A:1, G:2, U:3, C:4, X:5}
@@ -31,10 +31,14 @@ class ESM2(nn.Module):
         self,
         model_name: str = "facebook/esm2_t6_8M_UR50D",
         context: int = 512,
+        use_pretrained: bool = False,
     ):
         super().__init__()
         self.context = context
-        self.esm = AutoModel.from_pretrained(model_name)
+        if use_pretrained:
+            self.esm = AutoModel.from_pretrained(model_name)
+        else:
+            self.esm = AutoModel.from_config(AutoConfig.from_pretrained(model_name))
         # We feed inputs_embeds (input_ids=None), so ESM's token_dropout branch
         # (which indexes input_ids) must be disabled.
         if getattr(self.esm.embeddings, "token_dropout", False):
