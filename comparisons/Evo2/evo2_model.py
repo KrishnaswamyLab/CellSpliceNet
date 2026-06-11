@@ -5,8 +5,8 @@ With ``--use-pretrained``, the Evo2 checkpoint is loaded and the backbone stays 
 (linear probing). Otherwise the architecture is randomly initialized and trained
 end-to-end (requires evo2 + vortex).
 Design aligned with ``comparisons/ESM2/esm2_model.py`` where it matters for this task:
-exon-centered cropping, annotation injection at the input, and an MLP regression head.
-Evo2 is causal (not bidirectional), so we pool the *last* exon token instead of mean-pooling.
+an exon-centered window from ``comparison_batch_inputs`` and an MLP regression head.
+Evo2 is causal (not bidirectional), so we pool the *last* non-pad token.
 See: https://github.com/arcinstitute/evo2
 """
 from __future__ import annotations
@@ -48,9 +48,7 @@ _disable_vortex_activations_log_file()
 # CharLevelTokenizer bytes (DNA; U mapped to T).
 DATASET_TO_BYTE = {1: 65, 2: 71, 3: 84, 4: 67, 5: 78}
 
-ANNOTATION_PAD = 0
-ANNOTATION_EXON = 1
-NUM_ANNOTATION_TOKENS = 4
+PAD_INDEX = 0  # dataloader sequence PAD
 
 DEFAULT_MODEL = "evo2_7b_base"
 
@@ -131,12 +129,12 @@ def _load_evo2_backbone(model_name: str, use_pretrained: bool):
 
 
 class Evo2ForPSI(nn.Module):
-    """Evo 2 encoder with trainable annotation adapter + PSI head."""
+    """Evo 2 encoder with PSI regression head."""
 
     def __init__(
         self,
         model_name: str = DEFAULT_MODEL,
-        context: int = 1024,
+        context: int = 8192,
         embed_layer: Optional[str] = None,
         max_length: Optional[int] = None,
         use_pretrained: bool = False,
@@ -174,11 +172,6 @@ class Evo2ForPSI(nn.Module):
             lookup[dataset_id] = byte_val
         self.register_buffer("dataset_to_byte", lookup, persistent=False)
 
-        # Learned annotation embedding injected at the backbone input (ESM2-style).
-        self.annotation_embedding = nn.Embedding(NUM_ANNOTATION_TOKENS, hidden_size)
-        nn.init.zeros_(self.annotation_embedding.weight)
-        self.annotation_embedding.to(self._backbone_device())
-
         self.regression_head = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
             nn.GELU(),
@@ -189,26 +182,20 @@ class Evo2ForPSI(nn.Module):
     def _backbone_device(self) -> torch.device:
         return next(self.backbone.parameters()).device
 
-    def _build_inputs(self, sequence: torch.Tensor, annotation: torch.Tensor):
-        """Center-crop on the exon (ESM2-style), map RNA tokens to DNA bytes."""
+    def _build_inputs(self, sequence: torch.Tensor) -> torch.Tensor:
+        """Center-crop on non-pad content and map RNA tokens to DNA bytes."""
         device = sequence.device
         batch_size, seq_len = sequence.shape
         crop = self.context
         pad_id = self.tokenizer.pad_id
 
         sequence = sequence.long()
-        annotation = annotation.long()
 
         byte_rows: list[torch.Tensor] = []
-        ann_rows: list[torch.Tensor] = []
         for i in range(batch_size):
             seq_i = sequence[i]
-            ann_i = annotation[i]
-            content = (seq_i != ANNOTATION_PAD).nonzero(as_tuple=True)[0]
-            exon = (ann_i == ANNOTATION_EXON).nonzero(as_tuple=True)[0]
-            if exon.numel() > 0:
-                center = int(exon.float().mean().round().item())
-            elif content.numel() > 0:
+            content = (seq_i != PAD_INDEX).nonzero(as_tuple=True)[0]
+            if content.numel() > 0:
                 center = int(content.float().mean().round().item())
             else:
                 center = seq_len // 2
@@ -218,101 +205,59 @@ class Evo2ForPSI(nn.Module):
             start = max(0, end - crop)
 
             win_seq = seq_i[start:end]
-            win_ann = ann_i[start:end]
-            keep = win_seq != ANNOTATION_PAD
+            keep = win_seq != PAD_INDEX
             win_seq = win_seq[keep]
-            win_ann = win_ann[keep]
             n = min(int(win_seq.numel()), crop)
             if n > 0:
-                win_seq = win_seq[:n]
-                win_ann = win_ann[:n]
-                byte_rows.append(self.dataset_to_byte[win_seq])
-                ann_rows.append(win_ann)
+                byte_rows.append(self.dataset_to_byte[win_seq[:n]])
             else:
                 byte_rows.append(torch.tensor([ord("N")], dtype=torch.long, device=device))
-                ann_rows.append(torch.zeros(1, dtype=torch.long, device=device))
 
         max_len = max(row.numel() for row in byte_rows)
         input_ids = torch.full((batch_size, max_len), pad_id, dtype=torch.long, device=device)
-        annotation_ids = torch.zeros((batch_size, max_len), dtype=torch.long, device=device)
-        for i, (bytes_i, ann_i) in enumerate(zip(byte_rows, ann_rows)):
+        for i, bytes_i in enumerate(byte_rows):
             n = bytes_i.numel()
             input_ids[i, :n] = bytes_i
-            annotation_ids[i, :n] = ann_i
-        return input_ids, annotation_ids
+        return input_ids
 
-    def _embed(self, input_ids: torch.Tensor, annotation_ids: torch.Tensor) -> torch.Tensor:
+    def _embed(self, input_ids: torch.Tensor) -> torch.Tensor:
         captured: dict[str, torch.Tensor] = {}
 
         def capture_hook(_module, _inputs, output) -> None:
             hidden = output[0] if isinstance(output, tuple) else output
             captured["hidden"] = hidden
 
-        def inject_hook(_module, _inputs, output):
-            hidden = output[0] if isinstance(output, tuple) else output
-            hidden = hidden + self.annotation_embedding(annotation_ids).to(hidden.dtype)
-            if isinstance(output, tuple):
-                return (hidden,) + tuple(output[1:])
-            return hidden
-
-        inject = self.backbone.embedding_layer.register_forward_hook(inject_hook)
         capture = self.backbone.get_submodule(self.embed_layer).register_forward_hook(capture_hook)
         try:
             self.backbone.forward(input_ids)
         finally:
-            inject.remove()
             capture.remove()
 
         return captured["hidden"]
 
-    def _pool_causal(self, hidden: torch.Tensor, annotation_ids: torch.Tensor) -> torch.Tensor:
-        """Pool the last exon token so each position has seen all sequence to its left."""
+    def _pool_causal(self, hidden: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
+        """Pool the last non-pad token so each position has seen all sequence to its left."""
         batch_size, seq_len, _ = hidden.shape
         idx = torch.arange(seq_len, device=hidden.device).unsqueeze(0).expand(batch_size, -1)
-        exon = annotation_ids == ANNOTATION_EXON
-        last_exon_idx = torch.where(exon, idx, torch.zeros_like(idx)).max(dim=1).values
-        pooled = hidden[torch.arange(batch_size, device=hidden.device), last_exon_idx]
+        pad_id = self.tokenizer.pad_id
+        content = input_ids != pad_id
+        last_content_idx = torch.where(content, idx, torch.zeros_like(idx)).max(dim=1).values
+        return hidden[torch.arange(batch_size, device=hidden.device), last_content_idx]
 
-        has_exon = exon.any(dim=1)
-        if not has_exon.all():
-            content = annotation_ids != ANNOTATION_PAD
-            last_content_idx = torch.where(content, idx, torch.zeros_like(idx)).max(dim=1).values
-            pooled = pooled.clone()
-            no_exon = ~has_exon
-            pooled[no_exon] = hidden[no_exon, last_content_idx[no_exon]]
-        return pooled
-
-    def forward(
-        self,
-        sequence: torch.Tensor,
-        annotation: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        if annotation is None:
-            raise ValueError("Evo2ForPSI requires the annotation track.")
-        input_ids, annotation_ids = self._build_inputs(sequence, annotation)
-        hidden = self._embed(input_ids, annotation_ids)
-        pooled = self._pool_causal(hidden, annotation_ids)
+    def forward(self, sequence: torch.Tensor) -> torch.Tensor:
+        input_ids = self._build_inputs(sequence)
+        hidden = self._embed(input_ids)
+        pooled = self._pool_causal(hidden, input_ids)
         return self.regression_head(pooled.float())
 
     def state_dict(self, *args, **kwargs):
         if self.freeze_backbone:
-            return {
-                "regression_head": self.regression_head.state_dict(),
-                "annotation_embedding": self.annotation_embedding.state_dict(),
-            }
+            return {"regression_head": self.regression_head.state_dict()}
         return super().state_dict(*args, **kwargs)
 
     def load_state_dict(self, state_dict, strict: bool = True):
         if self.freeze_backbone and "regression_head" in state_dict:
-            if "head" in state_dict and "regression_head" not in state_dict:
-                state_dict = {
-                    "regression_head": state_dict["head"],
-                    "annotation_embedding": state_dict["annotation_embedding"],
-                }
             self.regression_head.load_state_dict(state_dict["regression_head"], strict=strict)
-            self.annotation_embedding.load_state_dict(
-                state_dict["annotation_embedding"], strict=strict
-            )
             return
         super().load_state_dict(state_dict, strict=strict)
 

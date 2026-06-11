@@ -84,7 +84,7 @@ class AttnBlock(nn.Module):
     def __init__(self,
                  dim: int = 32,
                  depth: int = 6,
-                 max_seq_len: int = 4096,
+                 max_seq_len: int = 8192,
                  bucket_size: int = 64,
                  causal: bool = False,
                  reversible: bool = False) -> None:
@@ -156,7 +156,7 @@ class SpliceTransformer(nn.Module):
                  dim: int = 32,
                  attn_depth: int = 2,
                  dim_encoder: int = 32,
-                 max_seq_len: int = 4096,
+                 max_seq_len: int = 8192,
                  bucket_size: int = 64) -> None:
         super().__init__()
         self.dim_encoder = dim_encoder

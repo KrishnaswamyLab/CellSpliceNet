@@ -9,7 +9,7 @@ class SpliceFinder(nn.Module):
     def __init__(self,
                  in_channels: int = 1,
                  num_features: int = 32,
-                 seq_len: int = 4096):
+                 seq_len: int = 8192):
         super().__init__()
 
         self.model = nn.Sequential(

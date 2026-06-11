@@ -19,9 +19,9 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 
 def predict(model, data_item, device):
-    sequence, annotation = comparison_batch_inputs(data_item, device)
+    sequence, _annotation = comparison_batch_inputs(data_item, device)
     y_true = data_item[2]["psi"].to(device)
-    y_pred = model(sequence=sequence, annotation=annotation)
+    y_pred = model(sequence=sequence)
     return y_pred, y_true
 
 

@@ -16,9 +16,9 @@ from esm2_model import ESM2
 
 
 def predict(model, data_item, device):
-    sequence, annotation = comparison_batch_inputs(data_item, device)
+    sequence, _annotation = comparison_batch_inputs(data_item, device)
     y_true = data_item[2]["psi"].to(device)
-    logits = model(sequence=sequence, annotation=annotation)["logits"]
+    logits = model(sequence=sequence)["logits"]
     return logits, y_true
 
 

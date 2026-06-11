@@ -12,13 +12,13 @@ setup_import_paths()
 from log_utils import log
 from seed import seed_everything
 
-from alphagenome_model import SEQUENCE_LENGTH, AlphaGenomeForPSI
+from alphagenome_model import AlphaGenomeForPSI
 
 
 def predict(model, data_item, device):
-    sequence, annotation = comparison_batch_inputs(data_item, device, max_len=SEQUENCE_LENGTH)
+    sequence, _annotation = comparison_batch_inputs(data_item, device)
     y_true = data_item[2]["psi"].to(device)
-    logits = model(sequence=sequence, annotation=annotation)["logits"]
+    logits = model(sequence=sequence)["logits"]
     return logits, y_true
 
 
@@ -33,15 +33,7 @@ if __name__ == "__main__":
     data = load_splicedata(cmd_args.batch_size, data_tag=cmd_args.data_tag, num_workers=cmd_args.num_workers)
 
     model = AlphaGenomeForPSI(use_pretrained=cmd_args.use_pretrained).to(device)
-    if cmd_args.use_pretrained:
-        optimizer = torch.optim.AdamW(model.regression_head.parameters(), lr=cmd_args.learning_rate)
-    else:
-        optimizer = torch.optim.AdamW(
-            list(model.annotation_embedding.parameters())
-            + list(model.annotation_embedding_128bp.parameters())
-            + list(model.regression_head.parameters()),
-            lr=cmd_args.learning_rate,
-        )
+    optimizer = torch.optim.AdamW(model.regression_head.parameters(), lr=cmd_args.learning_rate)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_fn = torch.nn.MSELoss()
 

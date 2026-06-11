@@ -6,7 +6,7 @@ import torch
 from spliceai_pytorch import SpliceAI
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "utils"))
-from setup import ANNOTATION_EXON, comparison_run_paths, load_splicedata, setup_import_paths, to_coded_seq
+from setup import comparison_batch_inputs, comparison_run_paths, load_splicedata, setup_import_paths
 from training import add_comparison_args, run_step_training
 
 setup_import_paths()
@@ -26,8 +26,7 @@ def prepare_spliceai_input(coded_seq: torch.Tensor) -> torch.Tensor:
 
     The model only predicts input positions 5000-9999, so the real sequence must
     land inside that band. Place the window center at input 7500 and pad to the
-    10000-long input the model expects; for the 4096 window this keeps the whole
-    sequence within the predicted band.
+    10000-long input the model expects.
     """
     _, _, w = coded_seq.shape
     pred_center = SPLICEAI_PRED_START + SPLICEAI_PRED_LEN // 2  # 7500
@@ -37,19 +36,11 @@ def prepare_spliceai_input(coded_seq: torch.Tensor) -> torch.Tensor:
 
 
 def predict(model, data_item, device):
-    coded_seq = to_coded_seq(data_item, device)  # [B, 2, W], exon-centered
-    padded = prepare_spliceai_input(coded_seq)    # [B, 2, 10000]
-    out = model(padded)[..., 0]                   # [B, 5000] over input[5000:10000]
-
-    annotation = padded[:, 1, SPLICEAI_PRED_START : SPLICEAI_PRED_START + SPLICEAI_PRED_LEN]
-    exon_mask = (annotation == ANNOTATION_EXON).type_as(out)  # [B, 5000]
-    denom = exon_mask.sum(dim=1, keepdim=True)
-    y_pred = (out * exon_mask).sum(dim=1, keepdim=True) / denom.clamp(min=1.0)
-    no_exon = denom.squeeze(1) == 0
-    if no_exon.any():
-        y_pred = y_pred.clone()
-        y_pred[no_exon] = out[no_exon].mean(dim=1, keepdim=True)
-
+    sequence, _annotation = comparison_batch_inputs(data_item, device)  # [B, W], exon-centered
+    coded_seq = sequence[:, None, :].float()  # [B, 1, W]
+    padded = prepare_spliceai_input(coded_seq)  # [B, 1, 10000]
+    out = model(padded)[..., 0]  # [B, 5000] over input[5000:10000]
+    y_pred = out.mean(dim=1, keepdim=True)
     y_true = data_item[2]["psi"].to(device)
     return y_pred, y_true
 
@@ -65,7 +56,7 @@ if __name__ == "__main__":
 
     model = SpliceAI.from_preconfigured(SPLICEAI_MODEL)
     model.conv1 = torch.nn.Conv1d(
-        in_channels=2,
+        in_channels=1,
         out_channels=model.conv1.out_channels,
         kernel_size=model.conv1.kernel_size,
         stride=model.conv1.stride,

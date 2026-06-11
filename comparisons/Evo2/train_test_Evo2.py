@@ -16,9 +16,9 @@ from evo2_model import DEFAULT_MODEL, Evo2ForPSI
 
 
 def predict(model, data_item, device):
-    sequence, annotation = comparison_batch_inputs(data_item, device)
+    sequence, _annotation = comparison_batch_inputs(data_item, device)
     y_true = data_item[2]["psi"].to(device)
-    y_pred = model(sequence=sequence, annotation=annotation)
+    y_pred = model(sequence=sequence)
     return y_pred, y_true
 
 
@@ -37,9 +37,7 @@ if __name__ == "__main__":
 
     model = Evo2ForPSI(model_name=DEFAULT_MODEL, use_pretrained=cmd_args.use_pretrained).to(device)
     if cmd_args.use_pretrained:
-        trainable_params = list(model.regression_head.parameters()) + list(
-            model.annotation_embedding.parameters()
-        )
+        trainable_params = list(model.regression_head.parameters())
     else:
         trainable_params = model.parameters()
     optimizer = torch.optim.AdamW(trainable_params, lr=cmd_args.learning_rate)

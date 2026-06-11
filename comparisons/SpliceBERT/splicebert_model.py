@@ -41,14 +41,12 @@ class SpliceBert(nn.Module):
         device: torch.device = torch.device("cpu"),
         model_path: str | Path | None = None,
         data_tag: str = "replicate",
-        vocab_size_annotation: int = 4,
         max_seq_len: int | None = None,
         use_pretrained: bool = False,
     ):
         super().__init__()
         self.device = device
         self.max_seq_len = max_seq_len if max_seq_len is not None else default_max_seq_len(data_tag)
-        self.vocab_size_annotation = vocab_size_annotation
         model_path = Path(model_path) if model_path is not None else default_pretrained_path(data_tag)
 
         self.tokenizer = AutoTokenizer.from_pretrained(str(model_path))
@@ -67,11 +65,7 @@ class SpliceBert(nn.Module):
         self.bertmodel.bert.encoder.layer = self.bertmodel.bert.encoder.layer[:3]
         self.bertmodel.to(self.device)
 
-        embed_dim = self.bertmodel.bert.embeddings.word_embeddings.embedding_dim
-        self.embed_annotation = nn.Embedding(self.vocab_size_annotation, embed_dim)
-        self.embed_annotation.to(self.device)
-
-    def forward(self, sequence: torch.Tensor, annotation: torch.Tensor | None = None):
+    def forward(self, sequence: torch.Tensor):
         sequence_list = sequence_to_list(sequence)
         tokens = self.tokenizer(
             sequence_list,
@@ -82,38 +76,8 @@ class SpliceBert(nn.Module):
         )
         tokens = tokens.to(self.device)
 
-        input_ids = tokens["input_ids"]
-        attention_mask = tokens["attention_mask"]
-
-        if annotation is not None:
-            annotation = annotation.long()
-            annotation = annotation[:, : input_ids.shape[-1] - 2]
-            annotation = torch.nn.functional.pad(annotation, (1, 1), "constant", 0)
-            annotation = annotation.to(self.device)
-
-        input_shape = input_ids.size()
-        batch_size, seq_length = input_shape
-        if hasattr(self.bertmodel.bert.embeddings, "token_type_ids"):
-            buffered_token_type_ids = self.bertmodel.bert.embeddings.token_type_ids[:, :seq_length]
-            token_type_ids = buffered_token_type_ids.expand(batch_size, seq_length)
-        else:
-            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=self.device)
-
-        embedding_sequence = self.bertmodel.bert.embeddings(
-            input_ids=input_ids,
-            position_ids=None,
-            token_type_ids=token_type_ids,
-            inputs_embeds=None,
-            past_key_values_length=0,
-        )
-
-        if annotation is not None:
-            embedding_joint = embedding_sequence + self.embed_annotation(annotation)
-        else:
-            embedding_joint = embedding_sequence
-
         outputs = self.bertmodel(
-            inputs_embeds=embedding_joint,
-            attention_mask=attention_mask,
+            input_ids=tokens["input_ids"],
+            attention_mask=tokens["attention_mask"],
         )
         return outputs.logits

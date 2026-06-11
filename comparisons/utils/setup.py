@@ -49,7 +49,7 @@ def add_use_pretrained_arg(parser: argparse.ArgumentParser) -> None:
 def truncate_sequence_batch(
     sequence: torch.Tensor,
     annotation: torch.Tensor,
-    max_len: int = 4096,
+    max_len: int = 8192,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Crop a window of length ``max_len`` centered on the exon of interest.
 
@@ -76,15 +76,20 @@ def truncate_sequence_batch(
     return torch.gather(sequence, -1, idx), torch.gather(annotation, -1, idx)
 
 
-def comparison_batch_inputs(data_item, device: torch.device, max_len: int = 4096):
+def comparison_batch_inputs(data_item, device: torch.device, max_len: int = 8192):
+    """Return the exon-centered sequence and aligned annotation.
+
+    Annotation is used only to center the crop window in ``truncate_sequence_batch``;
+    it is not fed to the models as an input feature.
+    """
     sequence, annotation = data_item[1]
     sequence, annotation = truncate_sequence_batch(sequence, annotation, max_len=max_len)
     return sequence.to(device), annotation.to(device)
 
 
-def to_coded_seq(data_item, device: torch.device, max_len: int = 4096) -> torch.Tensor:
-    sequence, annotation = comparison_batch_inputs(data_item, device, max_len=max_len)
-    return torch.hstack((sequence[:, None, :], annotation[:, None, :])).float()
+def to_coded_seq(data_item, device: torch.device, max_len: int = 8192) -> torch.Tensor:
+    sequence, _annotation = comparison_batch_inputs(data_item, device, max_len=max_len)
+    return sequence[:, None, :].float()
 
 
 def load_splicedata(batch_size: int, data_tag: str = "replicate", num_workers: int = 4):
