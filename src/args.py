@@ -3,12 +3,8 @@ from argparse import ArgumentParser
 import torch
 import os
 
-ROOT_DIR = '/'.join(os.path.realpath(__file__).split('/')[:-2])
+from utils.paths import preset_config_for_tag, resolve_training_paths, run_output_dir, ensure_run_output_layout
 
-
-def mkdir_fun(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
 
 def meg2List(name, input_list):
     f = open(name, mode='w')
@@ -17,22 +13,9 @@ def meg2List(name, input_list):
     f.close()
 
 def make_directroy(args):
-    output_dir = os.path.join(ROOT_DIR, 'outputs/')
-    mkdir_fun(output_dir)
-
-    output_dir = os.path.join(output_dir, args.model)
-    mkdir_fun(output_dir)
-
-    output_dir = os.path.join(output_dir, args.output_key + args.dataset_type)
-    mkdir_fun(output_dir)
-
-    mkdir_fun(os.path.join(output_dir, 'model'))
-    mkdir_fun(os.path.join(output_dir, 'scatter_valid'))
-    mkdir_fun(os.path.join(output_dir, 'scatter_valid/psi'))
-    mkdir_fun(os.path.join(output_dir, 'scatter_valid/delta-psi'))
-    mkdir_fun(os.path.join(output_dir, 'codes'))
-    # mkdir_fun(os.path.join(root_dir, 'scatter_pergene'))
-    return output_dir
+    output_dir = run_output_dir(args.model, args.output_key, args.dataset_type)
+    ensure_run_output_layout(output_dir)
+    return str(output_dir)
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -66,23 +49,19 @@ def print_gpu_info(args):
     print()
     print("----------------------------------------------------------------")
 
-def argparser_fn(dataset_type, batch_size=40, server='misha'):
+def argparser_fn(dataset_type, batch_size=40):
     parser = ArgumentParser(add_help=True)
-    # dataset_root = 'DATASET PATH'
-    dataset_root = os.path.join(ROOT_DIR, 'dataset/')
+    preset_config = preset_config_for_tag(dataset_type)
 
     # data argmuments
     parser.add_argument("--model", default="deltacellsplicenet", type=str)
     # parser.add_argument("--dataset", default="240910", type=str)
     parser.add_argument("--dataset_type", default='01Feb2025_'+dataset_type, type=str)
 
-    parser.add_argument("--dataset_root", default=dataset_root, type=str)
-    parser.add_argument("--config_fname", default=os.path.join(dataset_root, 'Alternative-Splicing/01Feb2025_'+dataset_type+'/data_config.ini'), type=str)
+    parser.add_argument("--config_fname", default=str(preset_config), type=str)
 
     structure_length = 500
     parser.add_argument("--structure_length", default=structure_length, type=int)
-    parser.add_argument("--structure_data_root", default=os.path.join(dataset_root, 'Alternative-Splicing/main/structure_coeffs/structure_scattering_dict_'+str(structure_length)+'.pkl'), type=str)
-    parser.add_argument("--expression_data_root", default=os.path.join(dataset_root, 'Alternative-Splicing/main/full_data_Feb01.tsv'), type=str)
 
     parser.add_argument("--input_dim", default=5, type=int)
     parser.add_argument("--latent_dim", default=256, type=int)
@@ -131,42 +110,11 @@ def argparser_fn(dataset_type, batch_size=40, server='misha'):
         help="Splice-factor genes in scatter .pt. Default 243 = worm (paper baseline); for GTEx pass --sfgenes 493 (must match preprocessing/expression_gtex build_meta.json n_genes).",
     )
     parser.add_argument(
-        "--scatter_coeffs_dir",
-        default="",
-        type=str,
-        help="Directory with scatter_coeffs_<tissue>.pt (GTEx) or <neuron>.pt (worm ablations). Empty: parent of expression_data_root / scatter_coeffs_gtex",
-    )
-
-    # Expression-encoder ablation knobs (R2 reviewer ask). All optional; defaults
-    # preserve the original scatter-coeff baseline. The driver sets these per-run.
-    parser.add_argument(
         "--expression_encoder",
         default="scatter",
         type=str,
         choices=["scatter", "mlp", "gnn"],
         help="Which expression encoder to use: scatter (paper anchor, geometric scattering), mlp (per-gene mean vector), gnn (GCN over MI/corr graph).",
-    )
-    parser.add_argument(
-        "--mean_vec_dir",
-        default="",
-        type=str,
-        help="Directory with <neuron>_mean.pt (one mean expression vector per gene). Required when --expression_encoder=mlp.",
-    )
-    parser.add_argument(
-        "--graph_metric_dir",
-        default="",
-        type=str,
-        help="Directory with <neuron>_graph.pt (PyG Data per neuron). Required when --expression_encoder=gnn.",
-    )
-
-    # Optional explicit events-coordinates table. Overrides the
-    # [processed_files] events_coordinates key in data_config.ini. Not needed
-    # for neuron_replicate datasets (coords come inline with each row).
-    parser.add_argument(
-        "--events_coordinates",
-        default="",
-        type=str,
-        help="Path to events_coordinates table. Empty: read from data_config.ini [processed_files] events_coordinates.",
     )
 
     # Step-based trainer (train_full.py) run-budget / logging knobs. Each
@@ -265,7 +213,7 @@ def argparser_fn(dataset_type, batch_size=40, server='misha'):
     args_out = parser.parse_known_args()[0]
     # args_out.model = 'cellsplicenet'
     args_out.model = 'deltacellsplicenet'
-    return  args_out
+    return resolve_training_paths(args_out)
 
 def extention(args):
     if args.no_sequence_for_ablation:

@@ -122,9 +122,7 @@ class BioZorro(nn.Module):
         self.sequence_model = EntireSeqModality(self.window_size, self.new_seq_length, self.eff_window_size, self.vocab_size, self.annot_vocab_size, self.hidden_dim, self.pad_indx)
         self.local_roi_model = LocalSeqModality(hparams, self.hidden_dim)
 
-        scdir = getattr(hparams, "scatter_coeffs_dir", "") or None
-        mvdir = getattr(hparams, "mean_vec_dir", "") or None
-        gmdir = getattr(hparams, "graph_metric_dir", "") or None
+        paths = hparams.dataset_paths
         encoder = getattr(hparams, "expression_encoder", "scatter") or "scatter"
         self.expression_model = build_expression_modality(
             encoder,
@@ -134,13 +132,18 @@ class BioZorro(nn.Module):
             gene_embed_bool=self.gene_embed_bool,
             bin_exp=self.bin_exp,
             ntype_feature_bool=self.ntype_feature_bool,
-            expression_data_root=hparams.expression_data_root,
+            expression_data_root=str(paths.expression_data_root),
             save_output_hook=self.save_output_hook,
-            scatter_coeffs_dir=scdir,
-            mean_vec_dir=mvdir,
-            graph_metric_dir=gmdir,
+            scatter_coeffs_dir=str(paths.scatter_coeffs_dir),
+            mean_vec_dir=str(paths.mean_vec_dir) if paths.mean_vec_dir else None,
+            graph_metric_dir=str(paths.graph_metric_dir) if paths.graph_metric_dir else None,
         )
-        self.local_structure_model = StructureModality(self.seq_coeff_dim, self.hidden_dim, structure_data_root=hparams.structure_data_root, structure_length=hparams.structure_length)
+        self.local_structure_model = StructureModality(
+            self.seq_coeff_dim,
+            self.hidden_dim,
+            structure_data_root=str(paths.structure_data_root),
+            structure_length=hparams.structure_length,
+        )
         self.ztransformer = ZorroTransformer(num_layers=hparams.layers, hidden_dim=self.hidden_dim, dim_head=64, nhead=hparams.nhead, device=self.device).to(self.device)
 
     def initialize_params(self, hparams):

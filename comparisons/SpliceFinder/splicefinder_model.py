@@ -9,13 +9,11 @@ class SpliceFinder(nn.Module):
     def __init__(self,
                  in_channels: int = 1,
                  num_features: int = 32,
-                 seq_len: int = 30000):
+                 seq_len: int = 4096):
         super().__init__()
 
         self.model = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=num_features, kernel_size=9, stride=1, padding=4),
-            nn.ReLU(),
-            nn.Conv1d(in_channels=num_features, out_channels=num_features, kernel_size=9, stride=1, padding=4),
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(seq_len * num_features, 100),
