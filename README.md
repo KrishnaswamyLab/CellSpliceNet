@@ -161,7 +161,7 @@ python src/train_full.py \
     --data_tag replicate \
     --sfgenes 243 \
     --batch_size 64 \
-    --n_steps 10000
+    --n_steps 200000
 ```
 
 Checkpoints and metrics go to `<repo>/outputs/<model>/<run-key>/`. See **[TRAINING.md](TRAINING.md)** for run-budget knobs, expression encoders, and outputs.
