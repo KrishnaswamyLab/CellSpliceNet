@@ -1,0 +1,6 @@
+{
+ "kind": "frozen",
+ "assignment": "frozen/c_elegans_cell.csv.gz",
+ "target": "mean",
+ "description": "Held-out neurons, skipped exons only."
+}

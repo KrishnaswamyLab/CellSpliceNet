@@ -1,0 +1,6 @@
+{
+ "kind": "frozen",
+ "assignment": "frozen/c_elegans_event.csv.gz",
+ "target": "mean",
+ "description": "Held-out exons, skipped exons only."
+}

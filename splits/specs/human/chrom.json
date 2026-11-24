@@ -1,0 +1,15 @@
+{
+ "kind": "chrom",
+ "test_chroms": [
+  "chr1",
+  "chr3",
+  "chr5",
+  "chr7",
+  "chr9"
+ ],
+ "valid_chroms": [
+  "chr2"
+ ],
+ "homology_drop": "frozen/human_chrom_homology_drop.csv.gz",
+ "description": "Held-out chromosomes. Train/valid exons with a megablast hit (e < 1e-10, alignment >= 50 nt, exon +-100 nt) to a test (or, for train, valid) exon are removed."
+}

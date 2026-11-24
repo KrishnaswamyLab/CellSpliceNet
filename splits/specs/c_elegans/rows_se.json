@@ -1,0 +1,9 @@
+{
+ "kind": "frozen",
+ "assignment": "frozen/c_elegans_rows.csv.gz",
+ "target": "paper_table",
+ "event_types": [
+  "SE"
+ ],
+ "description": "Skipped-exon rows of the original row split (no control exons or introns)."
+}

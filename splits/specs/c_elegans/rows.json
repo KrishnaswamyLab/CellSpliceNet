@@ -1,0 +1,6 @@
+{
+ "kind": "frozen",
+ "assignment": "frozen/c_elegans_rows.csv.gz",
+ "target": "paper_table",
+ "description": "Original random row split of the published per-neuron table (skipped exons plus CE/CI control exons and introns)."
+}
