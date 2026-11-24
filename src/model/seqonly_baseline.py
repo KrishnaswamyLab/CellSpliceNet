@@ -286,7 +286,8 @@ class _NoAnnotStructureWrapper(nn.Module):
         m = self.inner
         (local_structure_tensor, structure_annotation, structure_seq,
          secondary_structure, structure_seq_letters) = load_structure(
-            sequence_tensor, metadata, m.structure_data_root, m.structure_length)
+            sequence_tensor, metadata, m.structure_data_root, m.structure_length,
+            getattr(m, 'coeff_scaling', None))
         collapsed = structure_annotation
         if self.collapse:
             collapsed = torch.where(structure_annotation > 0,

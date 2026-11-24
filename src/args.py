@@ -63,6 +63,14 @@ def argparser_fn(dataset_type, batch_size=40):
 
     structure_length = 500
     parser.add_argument("--structure_length", default=structure_length, type=int)
+    parser.add_argument(
+        "--structure_scaling",
+        default=os.environ.get("STRUCTURE_SCALING", "fixed"),
+        choices=["fixed", "batch"],
+        help="How structure coefficients are scaled to [0, 1]. fixed (default): bounds computed once "
+             "from the training exons, so a prediction does not depend on its batch. batch: the original "
+             "per-batch min-max, needed to reproduce the published model's training exactly.",
+    )
 
     parser.add_argument("--input_dim", default=5, type=int)
     parser.add_argument("--latent_dim", default=256, type=int)
