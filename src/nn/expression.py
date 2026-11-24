@@ -291,6 +291,62 @@ class GraphNNExpressionModality(nn.Module, _ExpressionGlobAttnMixin):
         return tokens, ctx
 
 
+class NodeFeatMLPExpressionModality(nn.Module, _ExpressionGlobAttnMixin):
+    """Fair MLP baseline = GNN minus message passing.
+
+    Reads the SAME PyG graph files the GNN uses (<neuron>_graph.pt) and runs a
+    per-node MLP on `data.x` ([G, node_feat_dim]) while *ignoring* edge_index /
+    edge_attr. This isolates the encoder from the input: scatter vs gnn vs this
+    MLP all consume identical node features, so a scatter/gnn win here reflects
+    the encoder (scattering / message passing), not richer input.
+
+    Contrast with MeanVecExpressionModality, which sees only a rank-1 per-gene
+    scalar (kept as the deliberately input-starved reference point)."""
+
+    def __init__(
+        self,
+        exp_dim,
+        coeff_dim,
+        hidden_dim,
+        gene_embed_bool,
+        bin_exp,
+        ntype_feature_bool,
+        expression_data_root,
+        save_output_hook,
+        scatter_coeffs_dir=None,
+        mean_vec_dir=None,
+        graph_metric_dir=None,
+    ):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.exp_dim = int(exp_dim)
+        self.bin_exp = bin_exp
+        self.gene_embed_bool = gene_embed_bool
+        self.save_output_hook = save_output_hook
+
+        if graph_metric_dir is None:
+            raise ValueError("NodeFeatMLPExpressionModality requires graph_metric_dir")
+        self.graph_dir = Path(graph_metric_dir)
+
+        # node feature dim = G (per-cell expression per gene), same as the GNN.
+        self.node_feat_dim = self.exp_dim
+        self.to_expression_embedding = nn.Sequential(
+            nn.Linear(self.node_feat_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+        )
+        self._build_glob_attn()
+
+    def prep_expression(self, metadata):
+        device = next(self.to_expression_embedding.parameters()).device
+        datas = [_load_graph(self.graph_dir, m["neuron"]) for m in metadata]
+        xs = torch.stack([d.x for d in datas], dim=0).to(device)  # [B, G, node_feat_dim]
+        tokens = self.to_expression_embedding(xs)                 # [B, G, H]
+        ctx = xs.mean(dim=-1, keepdim=True)                       # [B, G, 1]
+        return tokens, ctx
+
+
 def build_expression_modality(encoder, **kwargs):
     """Factory used by ztransformer.BioZorro to pick an expression encoder."""
     encoder = (encoder or "scatter").lower()
@@ -298,9 +354,15 @@ def build_expression_modality(encoder, **kwargs):
         return GraphExpressionModality(
             **{k: v for k, v in kwargs.items() if k not in ("mean_vec_dir", "graph_metric_dir")}
         )
-    if encoder == "mlp":
+    if encoder in ("mlp", "mlp_scalar"):
         kwargs.pop("graph_metric_dir", None)
         return MeanVecExpressionModality(**kwargs)
+    if encoder == "mlp_node":
+        kwargs.pop("mean_vec_dir", None)
+        return NodeFeatMLPExpressionModality(**kwargs)
     if encoder == "gnn":
         return GraphNNExpressionModality(**kwargs)
-    raise ValueError(f"unknown expression_encoder: {encoder!r} (expected scatter|mlp|gnn)")
+    raise ValueError(
+        f"unknown expression_encoder: {encoder!r} "
+        "(expected scatter|mlp|mlp_scalar|mlp_node|gnn)"
+    )

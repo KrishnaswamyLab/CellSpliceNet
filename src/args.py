@@ -54,7 +54,8 @@ def argparser_fn(dataset_type, batch_size=40):
     preset_config = preset_config_for_tag(dataset_type)
 
     # data argmuments
-    parser.add_argument("--model", default="deltacellsplicenet", type=str)
+    parser.add_argument("--model", default=os.environ.get("MODEL", "deltacellsplicenet"), type=str,
+                        help="Model registry name (model/model_registry.py); MODEL env var is the fallback.")
     # parser.add_argument("--dataset", default="240910", type=str)
     parser.add_argument("--dataset_type", default='01Feb2025_'+dataset_type, type=str)
 
@@ -113,8 +114,8 @@ def argparser_fn(dataset_type, batch_size=40):
         "--expression_encoder",
         default="scatter",
         type=str,
-        choices=["scatter", "mlp", "gnn"],
-        help="Which expression encoder to use: scatter (paper anchor, geometric scattering), mlp (per-gene mean vector), gnn (GCN over MI/corr graph).",
+        choices=["scatter", "mlp", "mlp_scalar", "mlp_node", "gnn"],
+        help="Which expression encoder to use: scatter (paper anchor, geometric scattering); mlp/mlp_scalar (per-gene mean scalar — input-starved reference); mlp_node (per-gene MLP on the GNN's node features, no graph — fair simple-encoder baseline); gnn (GCN over MI/corr graph).",
     )
 
     # Step-based trainer (train_full.py) run-budget / logging knobs. Each
@@ -149,6 +150,14 @@ def argparser_fn(dataset_type, batch_size=40):
         type=float,
         default=float(os.environ.get("LOG_EVERY_SECS", "30")),
         help="Per-iteration progress log cadence in seconds (train_full.py).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=int(os.environ.get("SEED", "42")),
+        help="RNG seed for torch/numpy/python (train_full.py seeds before building "
+             "the dataloader, so shuffle order is reproducible). SEED env fallback "
+             "matches the worm trainer convention; use distinct seeds for CI replicates.",
     )
 
     # parser.add_argument("--total_genes", default=-1, type=int)
@@ -211,8 +220,6 @@ def argparser_fn(dataset_type, batch_size=40):
     key = '20250128-162732'
     parser.add_argument("--model_key", default='240910--'+key)
     args_out = parser.parse_known_args()[0]
-    # args_out.model = 'cellsplicenet'
-    args_out.model = 'deltacellsplicenet'
     return resolve_training_paths(args_out)
 
 def extention(args):

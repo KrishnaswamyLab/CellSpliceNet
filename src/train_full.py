@@ -83,8 +83,21 @@ def main():
     # lr, n_steps, eval_every_iteration, device, batch_size, and the run-budget
     # knobs: time_budget_s, valid_max_batches, save_step_ckpt_every, log_*).
     args = argparser_fn(dataset_type=data_tag)
+    print(f"[full] model={args.model}", flush=True)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
     device = torch.device(args.device)
+
+    # Seed before building the dataloader: train_dataloader() uses shuffle=True
+    # with the default (global) generator, so seeding here makes the shuffle
+    # order — and weight init — reproducible. Distinct --seed values give the
+    # independent replicates needed for confidence intervals.
+    import random as _random
+    _random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
+    print(f"[full] seed={args.seed}", flush=True)
 
     data = splicedata_dataloader(args)
     data.setup()
@@ -130,7 +143,9 @@ def main():
     while step < n_steps and not done:
         for (meta, x, y) in train_loader:
             model.train()
-            preds, loss_i, _ = model_perd(model, x, meta, y, device, embed_list_return=False)
+            # AMP=bf16 env: bfloat16 autocast for the training forward pass (no grad scaler needed).
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=os.environ.get("AMP", "") == "bf16"):
+                preds, loss_i, _ = model_perd(model, x, meta, y, device, embed_list_return=False)
             optimizer.zero_grad()
             loss_i.backward()
             optimizer.step()

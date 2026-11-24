@@ -91,9 +91,10 @@ def load_structure(sequence_tensor, metadata, structure_data_root, structure_len
         secondary_structure.append(secondary_structure_i)
         structure_seq_letters.append(structure_seq_i)
  
-    structure_seq = torch.cat(structure_seq_cat, dim=0).to('cuda') 
-    batch_seqstc_coeff = torch.cat(batch_seqstc_coeff).to('cuda')   
-    structure_annotation = torch.cat(structure_annotation).to('cuda')  
+    _dev = 'cuda' if torch.cuda.is_available() else 'cpu'  # GPU no-op; enables CPU eval
+    structure_seq = torch.cat(structure_seq_cat, dim=0).to(_dev)
+    batch_seqstc_coeff = torch.cat(batch_seqstc_coeff).to(_dev)
+    structure_annotation = torch.cat(structure_annotation).to(_dev)
     structure_annotation.requires_grad = True 
  
     min_val = torch.min(batch_seqstc_coeff)

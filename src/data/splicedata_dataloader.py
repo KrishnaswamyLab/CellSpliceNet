@@ -42,7 +42,8 @@ class splicedata_dataloader():
         self.pad_indx = 0
         self.num_workers = getattr(hparams, "num_workers", 8)
 
-    def _dataloader_kwargs(self, shuffle_bool: bool) -> dict:
+    def _dataloader_kwargs(self, shuffle_bool: bool, drop_last: bool = True) -> dict:
+        # drop_last only for training: on valid/test it silently skipped up to batch_size-1 rows.
         nw = self.num_workers
         return dict(
             batch_size=self.batch_size,
@@ -51,7 +52,7 @@ class splicedata_dataloader():
             pin_memory=True,
             shuffle=shuffle_bool,
             collate_fn=sp3_collate_fn,
-            drop_last=True,
+            drop_last=drop_last,
         )
 
     def splice_factor_prep(self, exp_csv, final_geneset, embedded_genes_list):
@@ -137,10 +138,10 @@ class splicedata_dataloader():
         return DataLoader(self.train_data, **self._dataloader_kwargs(shuffle_bool))
 
     def valid_dataloader(self, shuffle_bool=True):
-        return DataLoader(self.valid_data, **self._dataloader_kwargs(False))
+        return DataLoader(self.valid_data, **self._dataloader_kwargs(False, drop_last=False))
 
     def test_dataloader(self, shuffle_bool=True):
-        return DataLoader(self.test_data, **self._dataloader_kwargs(False))
+        return DataLoader(self.test_data, **self._dataloader_kwargs(False, drop_last=False))
 
     def setup_hparams(self, hparams):
         """
