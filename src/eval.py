@@ -15,6 +15,7 @@ compared on identical rows and identical batch composition. Existing output file
 import argparse
 import csv
 import os
+import pathlib
 import sys
 import time
 
@@ -44,6 +45,20 @@ def parse_eval_args():
     p.add_argument("--num_workers", type=int, default=6)
     a, _ = p.parse_known_args()
     return a
+
+
+def repoint_data_paths(model, paths, device):
+    """Checkpoints are pickled whole modules and carry the data paths of the machine they were trained
+    on (the released worm checkpoint points at /gpfs/radev; old ones use `scatter_path`). Data always
+    come from the config: point every expression / structure module at the config's files."""
+    for m in model.modules():
+        d = m.__dict__
+        if "scatter_dir" in d or "scatter_path" in d:
+            m.scatter_dir = pathlib.Path(paths.scatter_coeffs_dir)
+        if "structure_data_root" in d:
+            m.structure_data_root = str(paths.structure_data_root)
+        if "device" in d and isinstance(d["device"], torch.device):
+            m.device = device
 
 
 def main():
@@ -79,6 +94,7 @@ def main():
         model = torch.load(ck, weights_only=False, map_location=device)
         if isinstance(model, nn.DataParallel):
             model = model.module
+        repoint_data_paths(model, args.dataset_paths, device)
         model.to(device).eval()
         t0 = time.time()
         P, T, M, X, B = [], [], [], [], []
