@@ -2,7 +2,10 @@ import pandas as pd
 from scipy.io import mmread
 from scipy.io import mmwrite
 import magic
-from args import parse_args
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from processing.c_elegans.expression.args import parse_args  # noqa: E402
 import os
 
 def load_count_matrix(args):

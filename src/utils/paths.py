@@ -5,12 +5,14 @@ All repo-relative and data_config.ini path tokens are resolved here.
 from __future__ import annotations
 
 import configparser
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DATASET_ROOT = REPO_ROOT / "dataset"
+# Data root: $CSN_DATA_ROOT if set, else <repo>/dataset (e.g. a symlink to the shared data folder).
+DATASET_ROOT = Path(os.environ["CSN_DATA_ROOT"]) if os.environ.get("CSN_DATA_ROOT") else REPO_ROOT / "dataset"
 OUTPUTS_ROOT = REPO_ROOT / "outputs"
 
 HUMAN_CONFIG = DATASET_ROOT / "human" / "data_config.ini"

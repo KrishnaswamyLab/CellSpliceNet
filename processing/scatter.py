@@ -4,7 +4,14 @@ import torch
 import torch.nn as nn
 from torch.nn import Linear 
 
-from torch_scatter import scatter_mean, scatter_add
+try:
+    from torch_scatter import scatter_mean, scatter_add
+except ImportError:  # torch_scatter is optional: only 1-D sums over an index are used here
+    def scatter_add(src, index, dim=0, out=None, dim_size=None):
+        assert src.dim() == 1 and dim == 0
+        n = dim_size if dim_size is not None else (int(index.max()) + 1 if index.numel() else 0)
+        out = torch.zeros(n, dtype=src.dtype, device=src.device) if out is None else out
+        return out.index_add_(0, index, src)
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import degree, add_remaining_self_loops
 from torch_geometric.utils.num_nodes import maybe_num_nodes

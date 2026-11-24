@@ -2,7 +2,10 @@ import pandas as pd
 from scipy.stats import skew, kurtosis
 import argparse
 import os
-from args import parse_args  
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from processing.c_elegans.expression.args import parse_args  # noqa: E402
    
 def load_magic_file(args): 
     df_magic = pd.read_csv(

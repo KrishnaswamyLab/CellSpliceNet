@@ -1,0 +1,12 @@
+# Processing environment (tested with Python 3.11). torch_scatter is optional. For CUDA 12.x drivers install
+# torch from https://download.pytorch.org/whl/cu128.
+numpy==2.0.2
+pandas==2.3.3
+scipy==1.14.1
+scikit-learn==1.5.2
+tqdm==4.70.1
+torch==2.11.0
+torch_geometric==2.8.1
+pysam==0.24.1
+ViennaRNA==2.8.0
+magic-impute==3.0.0

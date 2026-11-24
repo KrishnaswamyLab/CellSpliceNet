@@ -8,9 +8,11 @@ from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import Data
 from tqdm import tqdm
 
-sys.path.append(".")
-from scatter import Scatter, scatter_moments
-from args import parse_args  
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from processing.c_elegans.expression.args import parse_args  # noqa: E402
+from processing.scatter import Scatter, scatter_moments  # noqa: E402
 
 
 def build_graph_continuous(adj_mat, moments_data):
