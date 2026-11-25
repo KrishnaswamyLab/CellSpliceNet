@@ -7,7 +7,8 @@ exon/intron/flank annotation embeddings added to the sequence representation (fr
 mode only), and an MLP regression head pooled over the exon. AlphaGenome's trunk takes
 one-hot DNA and we read its 128 bp embeddings (B, L/128, 3072); the exon annotation
 selects which 128 bp bins to pool. With ``--use-pretrained``, the trunk is frozen and
-only the regression head is trained, matching the original baseline.
+only the regression head is trained. Set ``linear_probe=True`` for a single
+``Linear(3072, 1)`` head (see ``probe_AlphaGenome.py``).
 
 From-scratch mode keeps the randomly initialized trunk frozen (450M params cannot be
 fit on the comparison sample budget) and trains annotation adapters plus the head,
@@ -49,6 +50,7 @@ class AlphaGenomeForPSI(nn.Module):
         organism_index: int = 0,
         hidden: int = EMBED_DIM,
         use_pretrained: bool = False,
+        linear_probe: bool = False,
     ):
         super().__init__()
         if context % BIN != 0:
@@ -56,6 +58,9 @@ class AlphaGenomeForPSI(nn.Module):
         self.context = context
         self.organism_index = organism_index
         self.use_pretrained = use_pretrained
+        self.linear_probe = linear_probe
+        if linear_probe and not use_pretrained:
+            raise ValueError("linear_probe requires use_pretrained=True (frozen pretrained trunk).")
 
         if use_pretrained:
             try:
@@ -76,11 +81,14 @@ class AlphaGenomeForPSI(nn.Module):
             param.requires_grad = False
         self.backbone.eval()
 
-        self.regression_head = nn.Sequential(
-            nn.Linear(EMBED_DIM, hidden),
-            nn.GELU(),
-            nn.Linear(hidden, 1),
-        )
+        if linear_probe:
+            self.regression_head = nn.Linear(EMBED_DIM, 1)
+        else:
+            self.regression_head = nn.Sequential(
+                nn.Linear(EMBED_DIM, hidden),
+                nn.GELU(),
+                nn.Linear(hidden, 1),
+            )
 
         channel = torch.full((len(DATASET_TO_CHANNEL),), -1, dtype=torch.long)
         for token, ch in DATASET_TO_CHANNEL.items():
