@@ -58,8 +58,11 @@ CellSpliceNet/
     nn/             # neural modules and layers
     utils/          # logging, seeding, config helpers, misc
     viz/            # visualization utilities for results/attention maps
-    train.py        # train/eval loops
-  pp/               # (optional) pre/post-processing assets; preprocessed data provided
+    train_full.py   # step-based trainer (recommended); train.py = legacy epoch loop
+    eval.py         # per-row predictions for a checkpoint
+  processing/       # builds the data root from raw data (worm, human, structure)
+  splits/           # split builder + specs (writes <data_root>/<organism>/splits/<name>/)
+  experiments/      # Slurm drivers and analysis scripts (see experiments/README.md)
   requirements.txt
   LICENSE
   README.md
@@ -125,11 +128,12 @@ pip install -r requirements.txt
 ## Data: Download & Configure
 
 1. Download the dataset: **[CellSpliceNet-dataset](https://github.com/KrishnaswamyLab/CellSpliceNet-dataset)**
-2. Place it under `<repo>/dataset/` with two bundles:
-   - `dataset/c_elegans/` (worm) -- `data_config.ini` plus encoded sequences, splits, structure, scatter coeffs
-   - `dataset/human/` (GTEx) -- same layout
+2. Point the code at it: `export CSN_DATA_ROOT=/path/to/data_root` (or put it at `<repo>/dataset`).
+   The data root has `c_elegans/` and `human/`, each with `processed/`, `raw/` and `splits/<name>/`
+   (`train.csv`, `valid.csv`, `test.csv`, `data_config.ini`). Rebuild or extend it with `processing/` and `splits/`.
 
-All training paths are read from each bundle's **`data_config.ini`** (`[files]` section). Paths use `$CONFIG_DIR` (directory of the INI) or `$ROOT` (repo root). Edit the INI to point at your files; there are no separate CLI path overrides for data files.
+Every split's **`data_config.ini`** lists its files (`[files]` section) using `$DATASET` (data root) and
+`$CONFIG_DIR` (the split folder), so no paths are hardcoded.
 
 See **[TRAINING.md](TRAINING.md)** for the full layout and path tokens.
 
@@ -137,12 +141,14 @@ See **[TRAINING.md](TRAINING.md)** for the full layout and path tokens.
 
 ## Quickstart: Train & Validate
 
-The recommended trainer is **`src/train_full.py`** (sample/step budgeted). `src/train.py` is the legacy epoch-based loop. Pick a dataset with **`--data_tag`** only; paths come from the matching `data_config.ini`:
+The recommended trainer is **`src/train_full.py`** (sample/step budgeted). `src/train.py` is the legacy epoch-based loop. `--data_tag` picks the organism and its default (paper) split; pass `--config_fname <data_root>/<organism>/splits/<split>/data_config.ini` for any other split:
 
-| Dataset | `--data_tag` | Config |
-|---------|--------------|--------|
-| Worm (*C. elegans*) | `replicate` (default) | `dataset/c_elegans/data_config.ini` |
-| Human (GTEx) | `gtex` | `dataset/human/data_config.ini` |
+| Dataset | `--data_tag` | Default split |
+|---------|--------------|---------------|
+| Worm (*C. elegans*) | `replicate` (default) | `c_elegans/splits/rows_se` (skipped exons; released checkpoint) |
+| Human (GTEx) | `gtex` | `human/splits/gene` (gene-disjoint) |
+
+On Slurm, `experiments/common/train.sbatch` wraps the same trainer (`SPLIT=gene MODEL=deltacellsplicenet SEED=1 sbatch experiments/common/train.sbatch`).
 
 ### Run on human (GTEx) data
 
@@ -160,9 +166,11 @@ python src/train_full.py \
 python src/train_full.py \
     --data_tag replicate \
     --sfgenes 243 \
-    --batch_size 64 \
+    --batch_size 16 \
     --n_steps 200000
 ```
+
+GPU memory: batch 16 (worm) and batch 4-8 (human) fit a 40 GB A100; a 24 GB card runs out of memory on worm at batch 16.
 
 Checkpoints and metrics go to `<repo>/outputs/<model>/<run-key>/`. See **[TRAINING.md](TRAINING.md)** for run-budget knobs, expression encoders, and outputs.
 

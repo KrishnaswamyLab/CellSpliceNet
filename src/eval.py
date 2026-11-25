@@ -49,7 +49,7 @@ def parse_eval_args():
 
 def repoint_data_paths(model, paths, device):
     """Checkpoints are pickled whole modules and carry the data paths of the machine they were trained
-    on (the released worm checkpoint points at /gpfs/radev; old ones use `scatter_path`). Data always
+    on (the released worm checkpoint stores an absolute path from another cluster; old ones use `scatter_path`). Data always
     come from the config: point every expression / structure module at the config's files."""
     for m in model.modules():
         d = m.__dict__

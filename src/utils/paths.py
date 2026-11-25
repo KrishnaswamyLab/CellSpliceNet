@@ -15,8 +15,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATASET_ROOT = Path(os.environ["CSN_DATA_ROOT"]) if os.environ.get("CSN_DATA_ROOT") else REPO_ROOT / "dataset"
 OUTPUTS_ROOT = REPO_ROOT / "outputs"
 
-HUMAN_CONFIG = DATASET_ROOT / "human" / "data_config.ini"
-CELEGANS_CONFIG = DATASET_ROOT / "c_elegans" / "data_config.ini"
+# Default configs (--data_tag without --config_fname): the paper splits.
+#   human: gene-disjoint split; worm: skipped-exon rows of the original row split (released checkpoint).
+HUMAN_CONFIG = DATASET_ROOT / "human" / "splits" / "gene" / "data_config.ini"
+CELEGANS_CONFIG = DATASET_ROOT / "c_elegans" / "splits" / "rows_se" / "data_config.ini"
 
 FILES_SECTION = "files"
 

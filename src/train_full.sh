@@ -5,22 +5,20 @@
 # All data paths come from data_config.ini ([files]).
 #
 #SBATCH --job-name=cellsplice_full
-#SBATCH -p pi_krishnaswamy
-#SBATCH --gres=gpu:a100:1
+#SBATCH -p gpu
+#SBATCH --gpus=1
 #SBATCH -c 12
 #SBATCH --mem=200G
 #SBATCH --time=48:00:00
 #SBATCH --output=cellsplice_full_%j.out
 
-source ~/.bashrc
-module load miniconda
-conda activate mioflow
+if [ -n "${CSN_ACTIVATE:-}" ]; then eval "$CSN_ACTIVATE"; fi   # e.g. "source .venv/bin/activate"
 set -eo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"
 
-CONFIG_FNAME="${CONFIG_FNAME:-$REPO_DIR/dataset/human/data_config.ini}"
+CONFIG_FNAME="${CONFIG_FNAME:-${CSN_DATA_ROOT:-$REPO_DIR/dataset}/human/splits/gene/data_config.ini}"
 
 DATA_TAG="${DATA_TAG:-gtex}"       # gtex/human -> human config; worm tags -> c_elegans
 SFGENES="${SFGENES:-493}"          # 493 = GTEx, 243 = worm
