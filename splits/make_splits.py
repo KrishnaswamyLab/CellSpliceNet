@@ -13,6 +13,8 @@ Writes <data_root>/<organism>/splits/<name>/{train,valid,test}.csv, split.json a
   cell            held-out tissues / neurons on top of a gene split; test marks gene_seen
   gene_x_cell     held-out chromosomes AND tissues; test marks gene_seen / tissue_seen
   frozen          a saved (event, neuron) -> split assignment (historical worm splits, made unseeded)
+  event_mean      one row per exon of a base split, target = mean PSI over the base split's training
+                  cells; `cell` is a fixed placeholder (for expression-free exon models)
 
 C. elegans targets (--target): mean = PSI averaged over replicates with reads, nb_reads averaged over
 all replicates (the published per-neuron data); sample1 = the one replicate per (event, neuron) saved
@@ -118,6 +120,29 @@ def gene_x_cell(t, spec, specs_dir):
     return {"train": tr, "valid": va, "test": te}
 
 
+def event_mean(t, spec, specs_dir):
+    """Collapse a base split to one row per exon: PSI = mean over the base training cells (n_tissues of
+    them), neuron = spec['placeholder_cell']. test = 'unseen_genes': base test exons not seen in training;
+    'all': every exon of train + valid + test (for embedding extraction)."""
+    base = make(t, load_spec(specs_dir, spec["base"]), specs_dir)
+    train_c = set(base["train"].neuron)
+
+    def collapse(x, part):
+        x = x[x.neuron.isin(train_c)]
+        m = x.groupby("event_id").agg(PSI=("PSI", "mean"), n_tissues=("PSI", "size"))
+        out = x.drop_duplicates("event_id").set_index("event_id").drop(columns=["PSI"]).join(m).reset_index()
+        out["neuron"] = spec["placeholder_cell"]
+        out["part"] = part
+        return out
+
+    tr, va = collapse(base["train"], "train"), collapse(base["valid"], "valid")
+    te = collapse(base["test"][base["test"].gene_seen == 0], "test")
+    assert not (set(tr.event_id) & set(te.event_id)) and not (set(tr.event_id) & set(va.event_id))
+    if spec["test"] == "all":
+        te = pd.concat([tr, va, te], ignore_index=True)
+    return {"train": tr, "valid": va, "test": te}
+
+
 def frozen(t, spec, assignment):
     a = assignment
     if "neuron_replicate" not in t:          # replicate-averaged targets: the saved replicate does not apply
@@ -142,6 +167,8 @@ def make(t, spec, specs_dir):
         return cell(t, spec, specs_dir)
     if kind == "gene_x_cell":
         return gene_x_cell(t, spec, specs_dir)
+    if kind == "event_mean":
+        return event_mean(t, spec, specs_dir)
     raise ValueError(kind)
 
 
@@ -206,7 +233,7 @@ def main():
             "max_cells_per_event": a.max_cells_per_event, **note, "files": {}}
     for k in SPLITS:
         d = parts[k]
-        cols = [c for c in COLS + ["neuron_replicate", "chrom", "gene_seen", "tissue_seen"] if c in d.columns]
+        cols = [c for c in COLS + ["neuron_replicate", "chrom", "gene_seen", "tissue_seen", "n_tissues", "part"] if c in d.columns]
         d[cols].to_csv(out / f"{k}.csv", index=False)
         info["files"][k] = {"rows": len(d), "events": int(d.event_id.nunique()), "genes": int(d.gene_id.nunique()),
                             "cells": int(d.neuron.nunique()),

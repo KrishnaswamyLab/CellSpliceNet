@@ -1,0 +1,7 @@
+{
+ "kind": "event_mean",
+ "base": "gene_x_cell",
+ "placeholder_cell": "Lung",
+ "test": "all",
+ "description": "As gene_x_cell_em, but test = every exon of train + valid + test (to extract per-exon embeddings)."
+}
