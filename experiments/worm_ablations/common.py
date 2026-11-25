@@ -80,3 +80,32 @@ def run_argv(prog, cfg, ini, batch_size=None):
             "--expression_encoder", str(cfg["expression_encoder"]), "--sfgenes", str(cfg.get("sfgenes", 242)),
             "--batch_size", str(batch_size or cfg.get("batch_size", 8)), "--lr", str(cfg.get("lr", 2e-5)),
             "--device", "cuda", "--eval_every_iteration", "500"]
+
+
+# ----------------------------------------------------------------------------- rebuttal analyses
+# old grouped / SE split names -> data-root splits (the 12Jan2026 *_single splits = *_sample1)
+GROUPED = {"SE": "rows_se", "eventbased": "event_sample1", "genebased": "gene_sample1", "neuronbased": "cell_sample1"}
+EVENTS_COORDS = WORM / "processed/events_coordinates.tsv"
+SC_EXPR = WORM / "raw/expression"            # CeNGEN single-cell counts (241119b_scCounts_neuronsBulk.*)
+GENE_IDS = WORM / "raw/c_elegans.PRJNA13758.WS291.geneIDs.txt"
+
+
+def read_preds(path):
+    """Per-row predictions with columns event_id, neuron, target, pred (src/eval.py files are renamed)."""
+    import pandas as pd
+    d = pd.read_csv(path)
+    return d.rename(columns={"psi_target": "target", "psi_pred": "pred", "true_psi": "target", "pred_psi": "pred"})
+
+
+def run_preds(group, split, seed, ckpt="best_validation_model"):
+    """Predictions of run <group>/<split>__seed<seed>: dump_preds.py output (new or old split name), else the
+    clean_preds.csv an older run dir carries. Returns the path (raises if none exists)."""
+    old = {v: k for k, v in GROUPED.items()}
+    names = [GROUPED.get(split, split), old.get(GROUPED.get(split, split), split)]
+    pr = Path(os.environ.get("CSN_PREDS") or out_dir("worm_ablations", "preds"))
+    cands = [pr / f"{group}__{n}__seed{seed}" / f"preds_{ckpt}.csv" for n in names]
+    cands += [abl_runs() / group / f"{n}__seed{seed}" / "clean_preds.csv" for n in names]
+    for c in cands:
+        if c.exists():
+            return c
+    raise FileNotFoundError(f"no predictions for {group}/{split} seed {seed}: run dump_preds.py ({cands[0]})")
