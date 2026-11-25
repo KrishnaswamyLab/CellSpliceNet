@@ -3,8 +3,8 @@
   2. exon arms (5 folds): feat / conv / conv+feat / emb / emb+feat x tissue side, quadrants Q1-Q3 + exon-level ranking
   3. stage A (CSN without expression on event means): validation curve
   4. stage-B delta head on CSN embeddings (ASCOT-level, gene_x_cell split)
-Env: TRAIN_LOGS / EMB_LOGS = globs of the stage-A training / embedding job logs (default logs/csn_train_*.out,
-     logs/csn_gpu_*.out).
+Env: TRAIN_LOGS / EMB_LOGS = globs of the stage-A training / embedding job logs (default logs/hg_stageA_*.out,
+     logs/hg_emb_*.out; launch_stage_a.sh names the jobs so).
 """
 import glob, re, os
 import pandas as pd
@@ -36,10 +36,10 @@ if f:
         if len(x): lines.append(f"-- {q}\n" + agg(x, ["within_all", "within_sd>=0.10", "within_sd>=0.20"] if q != "Q2_between" else ["within_all"]).to_string())
 
 lines.append("\n== 3. Stage A (csn_noexpr, event-mean targets, combo_em): valid MSE curve (constant predictor ~0.199) ==")
-for lg in sorted(glob.glob(os.environ.get("TRAIN_LOGS", "logs/csn_train_*.out"))):
+for lg in sorted(glob.glob(os.environ.get("TRAIN_LOGS", "logs/hg_stageA_*.out"))):
     v = re.findall(r"step\s+(\d+) \| train loss \(avg-since-last\): ([\d.]+) \| valid loss: ([\d.]+)", open(lg).read())
     lines.append(os.path.basename(lg) + ": " + " ".join(f"{s}:{vl}" for s, _, vl in v[::3]) + (f" ... last {v[-1][0]}:{v[-1][2]}" if v else ""))
-for lg in glob.glob(os.environ.get("EMB_LOGS", "logs/csn_gpu_*.out")):
+for lg in glob.glob(os.environ.get("EMB_LOGS", "logs/hg_emb_*.out")):
     lines += [l.strip() for l in open(lg) if l.startswith("[emb]") and "rho" in l]
 
 lines.append("\n== 4. Stage-B delta head on CSN embeddings (ASCOT-level, gene_x_cell split) ==")
