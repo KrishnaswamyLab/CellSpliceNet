@@ -1,0 +1,7 @@
+{
+ "kind": "event_mean",
+ "base": "gene_x_cell",
+ "placeholder_cell": "Lung",
+ "test": "unseen_genes",
+ "description": "One row per exon of gene_x_cell; target = mean PSI over the 34 training tissues. Test = held-out-chromosome exons. For expression-free exon (base) models."
+}

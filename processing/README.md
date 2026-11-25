@@ -11,6 +11,12 @@ with `raw/`, `processed/` and `events.csv`.
 3. `python processing/human/build_events.py` writes `human/events.csv`.
 4. Structure: see below, with `--organism human`.
 5. Expression: `sbatch processing/human/expression/run_all_tissues.sbatch` writes one scatter file per tissue.
+   `expression/zscore_scatter.py` writes `scatter_493_z_cell/` (standardized with training-tissue statistics);
+   `expression/pseudobulk.py` writes `expression/tissue_pseudobulk.csv.gz` (all genes, per tissue).
+6. Inputs of the generalization experiments (`experiments/human_gen`), in this order:
+   `event_features.py` (exon sequence features, needs maxentpy), `event_variability.py` (PSI spread across
+   tissues), `ss_windows.py` (1,400 nt around the four splice sites), `junctions.py` (per-tissue split-read
+   counts from the GTEx junction counts) and `donor_data.py` (per-sample PSI and expression, `processed/donor/`).
 
 **C. elegans**
 1. `python processing/c_elegans/build_events.py` writes `c_elegans/events.csv`.
@@ -24,4 +30,5 @@ with `raw/`, `processed/` and `events.csv`.
 2. `processing/structure/scatter_structures.py` computes the graph scattering (GPU).
 3. `processing/structure/collect.py` writes `processed/structure/structure_scattering_dict.pkl`.
 
-Splits are made from `events.csv` by `splits/make_splits.py`.
+Splits are made from `events.csv` by `splits/make_splits.py`; `splits/homology_drop.py` rebuilds the homology
+filter of the human chrom split.
