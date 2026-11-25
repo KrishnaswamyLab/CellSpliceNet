@@ -1,3 +1,4 @@
+import os
 import torch 
 import numpy as np
 
@@ -91,7 +92,7 @@ def cut_until_r(s: str) -> str:
 
 if __name__ == "__main__":   
 
-    dataset_root = '/gpfs/radev/home/aa2793/project/cellnn/dataset/Alternative-Splicing'
+    dataset_root = os.path.join(os.environ.get("CSN_DATA_ROOT", "dataset"), "Alternative-Splicing")
     expression_file = pd.read_csv(dataset_root+'/main/full_data_Feb01.tsv', delimiter='\t')  
     event_id_list = expression_file['event_id'].tolist() 
     # sample_id_list = expression_file['sample_id'].tolist() 

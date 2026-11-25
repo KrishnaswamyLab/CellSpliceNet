@@ -13,12 +13,14 @@ This repo ships two trainers under `src/`:
 
 ## 1. Where to put the data
 
-Two dataset bundles live under `<repo>/dataset/`:
+Set `CSN_DATA_ROOT` to the data root (default `<repo>/dataset`). Each split is a folder
+`<data_root>/<organism>/splits/<split>/` with `train.csv`, `valid.csv`, `test.csv` and `data_config.ini`.
+`--config_fname` picks any split; without it `--data_tag` uses the paper split:
 
-| Dataset | Config | `--data_tag` default |
-|---------|--------|----------------------|
-| Human (GTEx) | `dataset/human/data_config.ini` | `gtex` |
-| Worm (*C. elegans*) | `dataset/c_elegans/data_config.ini` | anything else (e.g. `replicate`) |
+| Dataset | `--data_tag` | Default config |
+|---------|--------------|----------------|
+| Human (GTEx) | `gtex` | `human/splits/gene/data_config.ini` |
+| Worm (*C. elegans*) | anything else (e.g. `replicate`) | `c_elegans/splits/rows_se/data_config.ini` |
 
 **`[files]`** — all dataset paths (dataloader + model modalities):
 - `enc_seq_file`, `enc_sj_file`, `spliceregion_inds`
@@ -28,15 +30,15 @@ Two dataset bundles live under `<repo>/dataset/`:
 - `scatter_coeffs_dir` — directory of per-cell-type `.pt` scatter coefficients
 - `mean_vec_dir`, `graph_metric_dir` — optional; for MLP/GNN expression ablations
 
-Paths use `$CONFIG_DIR` (directory containing the INI) or `$ROOT` (repo root). Edit the INI to change paths; there are no duplicate CLI path flags.
+Paths use `$DATASET` (data root), `$CONFIG_DIR` (directory containing the INI) or `$ROOT` (repo root). Edit the INI to change paths; there are no duplicate CLI path flags.
 
 ---
 
 ## 2. Quickstart — human (GTEx, 49 tissues)
 
 ```bash
-module load miniconda && conda activate mioflow   # or your env
-cd <repo>
+cd <repo>   # with your Python env active
+export CSN_DATA_ROOT=/path/to/data_root
 
 python src/train_full.py \
     --data_tag   gtex \
@@ -44,7 +46,7 @@ python src/train_full.py \
     --batch_size 4 --n_steps 200000
 ```
 
-`--sfgenes 493` must match the number of splice-factor genes in the scatter `.pt` files (GTEx). `--data_tag gtex` selects `dataset/human/data_config.ini` and sets `dataset_type=01Feb2025_gtex`.
+`--sfgenes 493` must match the number of splice-factor genes in the scatter `.pt` files (GTEx). `--data_tag gtex` selects `human/splits/gene/data_config.ini` and sets `dataset_type=01Feb2025_gtex`.
 
 ## 3. Quickstart — worm (*C. elegans*)
 

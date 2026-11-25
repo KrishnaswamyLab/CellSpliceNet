@@ -1,3 +1,4 @@
+import os
 import torch 
 from torch import nn 
 import pandas as pd
@@ -43,8 +44,8 @@ class GraphExpressionModality(nn.Module):
         self.expression_data_root = expression_data_root 
         self.save_output_hook = save_output_hook 
 
-        # dataset_root = '/gpfs/radev/home/aa2793/project/cellnn/dataset/Alternative-Splicing/01Feb2025_replicate/expression_scattering_coeffs_continuous/'
-        dataset_root = '/gpfs/radev/home/aa2793/project/cellnn/dataset/Alternative-Splicing/expression_dataset/pp04_scatter/'
+        # scatter coefficients: <dataset root>/Alternative-Splicing/expression_dataset/pp04_scatter/
+        dataset_root = os.path.join(os.environ.get("CSN_DATA_ROOT", "dataset"), "Alternative-Splicing/expression_dataset/pp04_scatter/")
         self.scatter_path = dataset_root   
            
         self.expression_dim = 243*11  
@@ -69,8 +70,7 @@ class GraphExpressionModality(nn.Module):
         for metadata_i in metadata:       
             nueron_i = metadata_i['neuron']  
          
-            scatter_path = '/gpfs/radev/home/va329/project/cellnn/dataset/Alternative-Splicing/expression_dataset/pp04_scatter/'
-            scatter_path = scatter_path + 'scatter_coeffs_'+nueron_i+'.pt'  
+            scatter_path = os.path.join(self.scatter_path, 'scatter_coeffs_'+nueron_i+'.pt')  
             scatter_of_neuron_i = torch.load(scatter_path, weights_only=False)    
             
               

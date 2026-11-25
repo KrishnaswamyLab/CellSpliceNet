@@ -2,7 +2,7 @@
 
 The checkpoint (CellSpliceNet README -> Drive 'CellSpliceNet.pth') is a 243-splice-factor
 deltacellsplicenet. It pickles with our CellSpliceNet/src, but its stored data paths point
-at /gpfs/radev and its expression module carries `scatter_path` where our code reads `scatter_dir`, so both
+at an absolute path from another cluster and its expression module carries `scatter_path` where our code reads `scatter_dir`, so both
 are repointed at the data root (src/eval.py repoint_data_paths).
 
 Neuron identity reaches the model only through the expression input, so the test reassigns neuron

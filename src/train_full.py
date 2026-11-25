@@ -10,11 +10,11 @@ Pick a dataset with ``--config_fname`` or ``--data_tag`` (gtex/human vs worm):
 
     python src/train_full.py \
         --data_tag gtex \
-        --config_fname dataset/human/data_config.ini \
+        --config_fname $CSN_DATA_ROOT/human/splits/gene/data_config.ini \
         --sfgenes 493 --batch_size 4 --n_steps 200000
 
-With no flags it falls back to the defaults in ``args.py`` (worm config under
-``dataset/c_elegans/``). Outputs go to ``<repo>/outputs/<model>/<key><type>/``.
+Without --config_fname, --data_tag picks the paper split (``utils/paths.py``): human
+``splits/gene``, worm ``splits/rows_se``. Outputs go to ``<repo>/outputs/<model>/<key><type>/``.
 
 Run-budget knobs are CLI flags below; each also accepts an env-var fallback so
 existing sbatch wrappers that export N_STEPS / EVAL_EVERY / etc. keep working.

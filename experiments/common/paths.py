@@ -85,6 +85,14 @@ def released_checkpoint() -> Path:
     return Path(os.environ.get("CSN_RELEASED_CKPT") or WORM / "checkpoints/cellsplicenet_released.pth")
 
 
+def _tokenize(v: str) -> str:
+    """Paths inside the data root are written as $DATASET/..., so a derived config moves with the data."""
+    if v.startswith("$"):
+        return v
+    root, p = os.path.realpath(DATA), os.path.realpath(v)
+    return "$DATASET/" + os.path.relpath(p, root) if p == root or p.startswith(root + os.sep) else v
+
+
 def derive_config(base_ini, out_ini, **files) -> Path:
     """Copy a data_config.ini with some [files] entries replaced (absolute paths or $DATASET tokens).
     $CONFIG_DIR entries of the base keep pointing at the base config's folder."""
@@ -92,9 +100,9 @@ def derive_config(base_ini, out_ini, **files) -> Path:
     c = configparser.ConfigParser()
     c.read(base_ini)
     for k, v in c["files"].items():
-        c["files"][k] = v.replace("$CONFIG_DIR", str(base_ini.parent.resolve()))
+        c["files"][k] = _tokenize(v.replace("$CONFIG_DIR", str(base_ini.parent.resolve())))
     for k, v in files.items():
-        c["files"][k] = str(v)
+        c["files"][k] = _tokenize(str(v))
     out_ini.parent.mkdir(parents=True, exist_ok=True)
     with open(out_ini, "w") as f:
         c.write(f)
