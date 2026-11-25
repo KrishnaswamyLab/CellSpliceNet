@@ -1,0 +1,10 @@
+{
+ "kind": "gene_disjoint",
+ "seed": 42,
+ "fractions": [
+  0.8,
+  0.1,
+  0.1
+ ],
+ "description": "Gene-disjoint 80/10/10 split of genes."
+}

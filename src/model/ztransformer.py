@@ -7,7 +7,7 @@ from nn.expression import GraphExpressionModality as ExpressionModality
 from nn.expression import build_expression_modality
 from nn.sequence import EntireSeqModality
 from nn.roi import LocalSeqModality
-from nn.structure import StructureModality
+from nn.structure import StructureModality, compute_structure_scaling
 import torchvision.utils as vutils
 from nn.transformer_modules import LayerNorm, FeedForward, OutputHook, Attention_w_dropout, Attention
 from torch import nn
@@ -138,11 +138,17 @@ class BioZorro(nn.Module):
             mean_vec_dir=str(paths.mean_vec_dir) if paths.mean_vec_dir else None,
             graph_metric_dir=str(paths.graph_metric_dir) if paths.graph_metric_dir else None,
         )
+        coeff_scaling = None
+        if getattr(hparams, "structure_scaling", "fixed") == "fixed":
+            coeff_scaling = compute_structure_scaling(str(paths.structure_data_root), str(paths.train_data_file))
+            print(f"[structure] fixed coefficient scaling from training exons: lo={coeff_scaling[0]} "
+                  f"hi={coeff_scaling[1]:.4f}", flush=True)
         self.local_structure_model = StructureModality(
             self.seq_coeff_dim,
             self.hidden_dim,
             structure_data_root=str(paths.structure_data_root),
             structure_length=hparams.structure_length,
+            coeff_scaling=coeff_scaling,
         )
         self.ztransformer = ZorroTransformer(num_layers=hparams.layers, hidden_dim=self.hidden_dim, dim_head=64, nhead=hparams.nhead, device=self.device).to(self.device)
 

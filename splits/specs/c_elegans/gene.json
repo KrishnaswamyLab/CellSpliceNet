@@ -1,0 +1,6 @@
+{
+ "kind": "frozen",
+ "assignment": "frozen/c_elegans_gene.csv.gz",
+ "target": "mean",
+ "description": "Held-out genes, skipped exons only."
+}

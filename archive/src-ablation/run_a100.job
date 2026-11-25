@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH --job-name=ieeg_main
+#SBATCH -p gpu
+#SBATCH --gres=gpu:a100:1
+#SBATCH -c 12 -n 1 --mem=200G
+#SBATCH --time=48:00:00
+#SBATCH --output=tr-logs/%x_%j.out
+
+ 
+source ~/.bashrc
+module load miniconda
+conda activate pytorch_splicenn
+python main.py 

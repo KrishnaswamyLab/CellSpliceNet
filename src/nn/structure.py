@@ -26,7 +26,26 @@ def _get_structure_data(path):
     return _STRUCTURE_CACHE[path]
 
 
-def load_structure(sequence_tensor, metadata, structure_data_root, structure_length):
+def compute_structure_scaling(structure_data_root, train_data_file):
+    """Fixed scaling bounds for the structure coefficients, computed once from the TRAINING exons.
+
+    The coefficients enter the model as coeff.sum(-1) ([L, 11]) zero-padded to structure_length.
+    They are non-negative, and every exon reaches the same ceiling (517.34 for both the worm and the
+    human data), so plain min-max with lo = 0 (the padding value, below every real coefficient) and
+    hi = the training maximum needs no robust bounds. Returns (lo, hi).
+    """
+    data = _get_structure_data(structure_data_root)
+    idx = data['_event_id_to_idx']
+    events = pd.read_csv(train_data_file, usecols=['event_id']).event_id.unique()
+    hi = max(float(data['structure_scattering_coeffs'][idx[e]].detach().float().sum(-1).max())
+             for e in events if e in idx)
+    return (0.0, hi)
+
+
+def load_structure(sequence_tensor, metadata, structure_data_root, structure_length, coeff_scaling=None):
+    """coeff_scaling: None = the original per-BATCH min-max (a prediction then depends on which rows
+    share its batch; kept so existing checkpoints reproduce exactly); (lo, hi) = fixed scaling from
+    compute_structure_scaling, clipped to [0, 1], independent of the batch."""
     data = _get_structure_data(structure_data_root)
 
     structure_seq_list = data['structure_seq']
@@ -91,23 +110,31 @@ def load_structure(sequence_tensor, metadata, structure_data_root, structure_len
         secondary_structure.append(secondary_structure_i)
         structure_seq_letters.append(structure_seq_i)
  
-    structure_seq = torch.cat(structure_seq_cat, dim=0).to('cuda') 
-    batch_seqstc_coeff = torch.cat(batch_seqstc_coeff).to('cuda')   
-    structure_annotation = torch.cat(structure_annotation).to('cuda')  
+    _dev = 'cuda' if torch.cuda.is_available() else 'cpu'  # GPU no-op; enables CPU eval
+    structure_seq = torch.cat(structure_seq_cat, dim=0).to(_dev)
+    batch_seqstc_coeff = torch.cat(batch_seqstc_coeff).to(_dev)
+    structure_annotation = torch.cat(structure_annotation).to(_dev)
     structure_annotation.requires_grad = True 
  
-    min_val = torch.min(batch_seqstc_coeff)
-    max_val = torch.max(batch_seqstc_coeff)
-    batch_seqstc_coeff = (batch_seqstc_coeff - min_val) / (max_val - min_val)
+    if coeff_scaling is None:
+        min_val = torch.min(batch_seqstc_coeff)
+        max_val = torch.max(batch_seqstc_coeff)
+        batch_seqstc_coeff = (batch_seqstc_coeff - min_val) / (max_val - min_val)
+    else:
+        lo, hi = coeff_scaling
+        batch_seqstc_coeff = ((batch_seqstc_coeff - lo) / (hi - lo)).clamp(0.0, 1.0)
  
     return batch_seqstc_coeff, structure_annotation, structure_seq, secondary_structure, structure_seq_letters
 
  
 class StructureModality(nn.Module):
-    def __init__(self, seq_coeff_dim, hidden_dim, structure_data_root, structure_length):
+    def __init__(self, seq_coeff_dim, hidden_dim, structure_data_root, structure_length, coeff_scaling=None):
         super().__init__()
 
         self.structure_data_root = structure_data_root
+        # None = per-batch min-max (original); (lo, hi) = fixed scaling (see load_structure).
+        # Saved in the checkpoint; checkpoints without the attribute keep the original behaviour.
+        self.coeff_scaling = coeff_scaling
         self.hidden_dim = hidden_dim 
         self.seq_coeff_dim = hidden_dim  
         self.structure_length = structure_length
@@ -164,7 +191,7 @@ class StructureModality(nn.Module):
     
     def prep_scattering_coeff(self, sequence_tensor, metadata):     
         
-        local_structure_tensor, structure_annotation, structure_seq, secondary_structure, structure_seq_letters = load_structure(sequence_tensor, metadata, self.structure_data_root, self.structure_length)  
+        local_structure_tensor, structure_annotation, structure_seq, secondary_structure, structure_seq_letters = load_structure(sequence_tensor, metadata, self.structure_data_root, self.structure_length, getattr(self, 'coeff_scaling', None))
         batch_size = local_structure_tensor.shape[0] 
         annot_ids, glob_attn_mask = self.annotation_prep(structure_annotation) 
  

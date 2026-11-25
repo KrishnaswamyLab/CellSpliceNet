@@ -1,12 +1,38 @@
  
-from model.model import ( 
+from model.model import (
     cellsplicenet,
     deltacellsplicenet,
 )
+# Additive: vanilla ViT baselines (ablation models). See model/vit_baseline.py.
+from model.vit_baseline import (
+    vitcsn_seq,
+    vitcsn_all,
+)
+# Additive: CellSpliceNet SeqOnly baseline. See model/seqonly_baseline.py.
+from model.seqonly_baseline import (
+    csn_seqonly,
+    csn_full_nocues,
+    csn_full_nocues_strict,
+    csn_full_nocues_nostruct,
+    csn_nostruct,
+    csn_noexpr,
+    csn_full_nocues_noexpr,
+    csn_seqonly_nocues,
+)
 
-MODEL_LIST = [ 
-    cellsplicenet, 
-    deltacellsplicenet
+MODEL_LIST = [
+    cellsplicenet,
+    deltacellsplicenet,
+    vitcsn_seq,
+    vitcsn_all,
+    csn_seqonly,
+    csn_full_nocues,
+    csn_full_nocues_strict,
+    csn_full_nocues_nostruct,
+    csn_nostruct,
+    csn_noexpr,
+    csn_full_nocues_noexpr,
+    csn_seqonly_nocues,
     ]
 
 

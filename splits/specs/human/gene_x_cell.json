@@ -1,0 +1,6 @@
+{
+ "kind": "gene_x_cell",
+ "genes": "chrom",
+ "cells": "cell",
+ "description": "Held-out chromosomes and tissues together. Test = held-out-chromosome exons in training and test tissues, plus training exons in test tissues; gene_seen / tissue_seen flags."
+}

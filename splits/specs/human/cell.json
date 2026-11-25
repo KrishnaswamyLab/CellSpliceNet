@@ -1,0 +1,24 @@
+{
+ "kind": "cell",
+ "base": "gene",
+ "valid_cells": [
+  "Aorta - Artery",
+  "Cerebellum - Brain",
+  "Prostate",
+  "Skeletal - Muscle",
+  "Spleen"
+ ],
+ "test_cells": [
+  "Atrial Appendage - Heart",
+  "Caudate nucleus - Brain",
+  "Cortex - Kidney",
+  "Hippocampus - Brain",
+  "Mammary Tissue - Breast",
+  "Pituitary",
+  "Putamen - Brain",
+  "Stomach",
+  "Vagina",
+  "Whole Blood"
+ ],
+ "description": "Held-out tissues on top of the gene split; test = all genes in the test tissues, gene_seen marks training genes."
+}
