@@ -296,7 +296,7 @@ def sp3_collate_fn(batch):
     # eidsize_tensor = torch.cat([x[3] for x in data_y]) 
     
     # ### NEED TO LOAD ONCE
-    # dataset_root = '/gpfs/radev/project/lafferty/aa2793/splicenn/dataset/'
+    # dataset_root = <dataset root>/
     # events_coordinates = pd.read_csv(dataset_root+'/processed_v02/main/240910_events_coordinates.tsv', sep='\t')  
     # # import pdb;pdb.set_trace()
     # local_seq_tensor = local_seq_extraction_no_batch(rna_seq_tensor, events_coordinates, meta_data, local_seq_length=200)

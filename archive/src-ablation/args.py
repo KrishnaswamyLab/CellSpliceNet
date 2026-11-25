@@ -67,10 +67,8 @@ def print_gpu_info(args):
     
 def argparser_fn(dataset_type, batch_size=40, server='misha'):  
     parser = ArgumentParser(add_help=True) 
-    if server == 'mccleary':
-        dataset_root = '/home/va329/project/genenn/dataset/'
-    elif server == 'misha': 
-        dataset_root = '/gpfs/radev/home/va329/project/cellnn/dataset/'
+    # originally a per-server absolute path; CSN_DATA_ROOT here = a folder with the 2025 Alternative-Splicing/ layout
+    dataset_root = os.environ.get("CSN_DATA_ROOT", "dataset").rstrip("/") + "/"
  
     # data argmuments
     parser.add_argument("--model", default="cellsplicenet_onlyablation", type=str)  
