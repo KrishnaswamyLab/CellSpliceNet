@@ -1,0 +1,12 @@
+# Training / evaluation environment (src/, experiments/common), Python 3.10, CUDA 12.8 wheels.
+#   uv venv --python 3.10 csn && uv pip install --python csn -r requirements-train.txt --index-strategy unsafe-best-match
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+numpy==2.0.2
+pandas==2.3.3
+scipy==1.14.1
+scikit-learn==1.5.2
+matplotlib==3.9.2
+einops==0.8.2
+torch_geometric==2.7.0

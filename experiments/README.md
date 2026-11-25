@@ -15,6 +15,13 @@ to read runs stored elsewhere). Slurm scripts write to `logs/` and run `$CSN_ACT
 | `rebuttal/` | Reviewer analyses: released-checkpoint checks, held-out split diagnostics, genuine-SE evaluation, descriptives and PHATE figures |
 | `comparisons/alphagenome/` | Zero-shot AlphaGenome splicing predictions (needs `ALPHAGENOME_API_KEY`) vs CellSpliceNet |
 
+Setup:
+
+```bash
+uv venv --python 3.10 csn && uv pip install --python csn -r requirements-train.txt --index-strategy unsafe-best-match
+export CSN_DATA_ROOT=/path/to/CellSpliceNet_data CSN_ACTIVATE="source $PWD/csn/bin/activate"
+```
+
 Common commands:
 
 ```bash
