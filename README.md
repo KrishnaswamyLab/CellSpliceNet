@@ -1,8 +1,8 @@
 # CellSpliceNet: Interpretable Multimodal Modeling of Alternative Splicing Across Neurons in *C. elegans*
 
-[![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/)
-[![PyTorch 1.10](https://img.shields.io/badge/PyTorch-1.10-EE4C2C.svg)](https://pytorch.org/)
-[![CUDA 11.3](https://img.shields.io/badge/CUDA-11.3-green.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/)
+[![PyTorch 2.11](https://img.shields.io/badge/PyTorch-2.11-EE4C2C.svg)](https://pytorch.org/)
+[![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![OS EL 8.10](https://img.shields.io/badge/OS-Enterprise%20Linux%208.10-lightgrey.svg)](#requirements)
 [![License](https://img.shields.io/badge/License-see%20LICENSE-informational.svg)](#license)
 
@@ -63,7 +63,7 @@ CellSpliceNet/
   processing/       # builds the data root from raw data (worm, human, structure)
   splits/           # split builder + specs (writes <data_root>/<organism>/splits/<name>/)
   experiments/      # Slurm drivers and analysis scripts (see experiments/README.md)
-  requirements.txt
+  requirements-train.txt
   LICENSE
   README.md
 ```
@@ -72,56 +72,21 @@ CellSpliceNet/
 
 ## Requirements
 
-- **OS:** Enterprise Linux 8.10 (other modern Linux distros likely fine)
-- **Python:** 3.9.18
-- **CUDA:** 11.3.1 (for GPU training)
-- **PyTorch:** 1.10.2
-- **Dependencies:** see `requirements.txt`
+- **OS:** Linux with an NVIDIA GPU (CUDA 12.8 driver)
+- **Python:** 3.10
+- **Dependencies:** `requirements-train.txt` (PyTorch 2.11, pinned); `requirements.txt` is the original 2023 environment
 
 ---
 
 ## Installation
 
-### 1) Clone
 ```bash
-git clone https://github.com/KrishnaswamyLab/CellSpliceNet
-cd CellSpliceNet
+git clone https://github.com/KrishnaswamyLab/CellSpliceNet && cd CellSpliceNet
+uv venv --python 3.10 csn && source csn/bin/activate
+uv pip install -r requirements-train.txt --index-strategy unsafe-best-match
 ```
 
-### 2) Environment (choose one)
-
-**Conda (recommended)**
-```bash
-# If your HPC requires modules, load them first (otherwise skip):
-# module load CUDA/11.3.1 CUDAcore/11.3.1 cuDNN/8.2.1.32-CUDA-11.3.1
-
-# Option A: from environment.yml (if present)
-conda env create -f environment.yml -n CellSpliceNet
-
-# Option B: from requirements.txt
-conda create -n CellSpliceNet python=3.9
-conda activate CellSpliceNet
-pip install -r requirements.txt
-
-# Install PyTorch matching your CUDA (example for CUDA 11.3):
-# (Adjust to your platform if needed)
-pip install torch==1.10.2 torchvision==0.11.3 torchaudio==0.10.2
-
-# SpliceAI
-python -m pip install spliceai-pytorch
-
-# SpliceBERT
-python -m pip install transformers
-```
-
-**Virtualenv**
-```bash
-python3.9 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-> **Tip:** If you see a CUDA version mismatch at runtime, reinstall PyTorch with the correct CUDA build.
+Comparison baselines need extra packages (e.g. `spliceai-pytorch`, `transformers`).
 
 ---
 
