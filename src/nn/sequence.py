@@ -35,7 +35,6 @@ class EntireSeqModality(nn.Module):
             Rearrange("b c l -> b l c"),
             nn.Linear(64, 1, bias=False),
             Rearrange("b l c -> b (c l)"), 
-            nn.Softmax(dim=1), 
         )
         
         for layer in self.seq_glob_attn_module:
@@ -43,6 +42,12 @@ class EntireSeqModality(nn.Module):
                 torch.nn.init.xavier_uniform_(layer.weight)
        
        
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        # Older full-model checkpoints stored softmax inside the scoring module.
+        if isinstance(self.seq_glob_attn_module[-1], nn.Softmax):
+            del self.seq_glob_attn_module[-1]
+
     def get_patches(self, input_tensor, pad_indx):
         bs_size = input_tensor.shape[0]
         list_of_patches = list(torch.chunk(input_tensor, self.new_seq_length, dim=1))
@@ -98,15 +103,12 @@ class EntireSeqModality(nn.Module):
         
         b_size, exp_len, hidden_dim = output_seq_embed.shape 
 
-        for indx, layer in enumerate(self.seq_glob_attn_module):
-            if indx == 0:
-                z_seq = layer(output_seq_embed)
-            else:
-                z_seq = layer(z_seq)
- 
-        mask = mask != mask  # flip booleans  
-        z_seq = z_seq.masked_fill(mask, -1e6)  
-        
+        patch_scores = self.seq_glob_attn_module(output_seq_embed)
+        if mask is not None:
+            padding_mask = ~mask
+            patch_scores = patch_scores.masked_fill(padding_mask, torch.finfo(patch_scores.dtype).min)
+        z_seq = torch.softmax(patch_scores, dim=1)
+
         z_seq = z_seq.reshape(b_size, 1, exp_len)
         z_rep = torch.bmm(z_seq, output_seq_embed)
         z_rep = z_rep.reshape(b_size, hidden_dim)
